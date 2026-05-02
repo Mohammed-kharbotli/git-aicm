@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -e
+
+# Check if Python 3 is available
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "Error: Python 3 is required but not installed."
+    echo "Install with:"
+    echo "  macOS: brew install python"
+    echo "  Ubuntu/Debian: sudo apt install python3 python3-pip python3-venv"
+    echo "  Windows: Download from python.org"
+    exit 1
+fi
+
+REAL_SCRIPT="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$REAL_SCRIPT")"
+VENV="${AICM_VENV:-$HOME/.venvs/git-aicm}"
+
+# Reinstall: nuke venv and start fresh
+if [[ "$1" == "reinstall" ]]; then
+  echo "Removing $VENV..."
+  rm -rf "$VENV"
+  echo "Reinstalling..."
+  python3 -m venv "$VENV"
+  "$VENV/bin/pip" install --quiet -e "${SCRIPT_DIR}"
+  echo "Done."
+  exit 0
+fi
+
+# Bootstrap venv + install if needed
+if [[ ! -f "$VENV/bin/python3" ]] || ! "$VENV/bin/python3" -c "import aicm" &>/dev/null; then
+  echo "Setting up git-aicm..."
+  python3 -m venv "$VENV"
+  "$VENV/bin/pip" install --quiet -e "${SCRIPT_DIR}"
+fi
+
+# Auto-install backend dependencies if missing
+missing=$("$VENV/bin/python3" -c "
+import sys
+from aicm.config import get_config, BACKEND_DEPS
+args = sys.argv[1:]
+backend = None
+for i, a in enumerate(args):
+    if a == '--backend' and i + 1 < len(args):
+        backend = args[i + 1]
+    elif a.startswith('--backend='):
+        backend = a.split('=', 1)[1]
+if not backend:
+    backend = get_config().get('backend', '')
+dep = BACKEND_DEPS.get(backend)
+if dep:
+    try:
+        __import__(dep)
+    except ImportError:
+        print(dep)
+" "$@" 2>/dev/null || true)
+
+if [[ -n "$missing" ]]; then
+  echo "Installing $missing..."
+  "$VENV/bin/pip" install --quiet "$missing"
+fi
+
+exec "$VENV/bin/python3" -m aicm "$@"

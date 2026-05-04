@@ -13,7 +13,27 @@ The default backend is **Ollama** with **llama3.2** — fully local, fully free,
 
 - Python 3.9+
 - Git
+- [Ollama](https://ollama.com) (default backend — local, free, no API keys)
 - macOS or Linux (Windows users: use [WSL](https://learn.microsoft.com/en-us/windows/wsl/install))
+
+**Install Ollama:**
+```bash
+# macOS (Homebrew)
+brew install ollama
+
+# Linux
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Or download from https://ollama.com/download
+```
+
+Then pull the default model and start the server:
+```bash
+ollama pull llama3.2
+ollama serve
+```
+
+> **Note:** `git aicm setup` will offer to pull the model for you if it's not already available.
 
 **Install Python:**
 ```bash

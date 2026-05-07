@@ -131,6 +131,9 @@ git aicm
 # provide context so the AI knows *why* you're making the change
 git aicm --context "fixing deprecation warnings for v2 migration"
 
+# include bullet points explaining the changes
+git aicm --detailed
+
 # use Bedrock instead
 git aicm --backend bedrock
 
@@ -144,7 +147,10 @@ git aicm --dry-run
 After generating, you'll be prompted to:
 - **c** — commit with the generated message
 - **e** — edit the message in your `$EDITOR` before committing
+- **s** — skip hooks (commit with `--no-verify`)
 - **r** — reject and abort
+
+If a commit fails (e.g. a pre-commit hook rejects it), the message is preserved and you can retry, edit, skip hooks, or reject.
 
 ## Configuration
 
@@ -197,16 +203,20 @@ git aicm --model codellama
 
 | Format | Description | Example |
 |--------|-------------|---------|
-| `conventional` (default) | Conventional Commits | `feat(auth): add login endpoint` |
-| `simple` | One-line summary | `add login endpoint` |
-| `detailed` | Summary + bullet point body | Summary with detailed explanation |
+| `conventional` (default) | Conventional Commits | `fix(auth): validate token expiry` |
+| `simple` | Plain summary | `validate token expiry` |
+
+By default, messages are a **single summary line**. Add `--detailed` for bullet points:
 
 ```bash
-# use a specific format
-git aicm --format simple
+# summary only (default)
+git aicm
 
-# or set in config
-git aicm config format detailed
+# summary + bullet points
+git aicm --detailed
+
+# change format
+git aicm --format simple
 ```
 
 ## Ticket References

@@ -39,27 +39,36 @@ def interactive_commit(message):
         return
     
     while True:
-        choice = input("\n[c]ommit / [e]dit / [r]eject? ").strip().lower()
-        if choice == "c":
+        choice = input("\n[c]ommit / [e]dit / [s]kip hooks / [r]eject? ").strip().lower()
+        if choice in ("c", "s"):
+            cmd = ["git", "commit", "-m", message]
+            if choice == "s":
+                cmd.append("--no-verify")
             try:
-                subprocess.run(["git", "commit", "-m", message], check=True)
+                subprocess.run(cmd, check=True)
+                return
             except subprocess.CalledProcessError:
-                print("Git commit failed.", file=sys.stderr)
-            return
+                print("Commit failed (hook or git error). Message preserved.", file=sys.stderr)
+                continue
         elif choice == "e":
             edited_message = edit_message(message)
             if edited_message:
                 is_valid, error = _validate_commit_message(edited_message)
                 if is_valid:
+                    message = edited_message
                     try:
-                        subprocess.run(["git", "commit", "-m", edited_message], check=True)
+                        cmd = ["git", "commit", "-m", message]
+                        subprocess.run(cmd, check=True)
+                        return
                     except subprocess.CalledProcessError:
-                        print("Git commit failed.", file=sys.stderr)
+                        print("Commit failed (hook or git error). Message preserved.", file=sys.stderr)
+                        continue
                 else:
                     print(f"Invalid commit message: {error}", file=sys.stderr)
+                    continue
             else:
                 print("Empty message, commit aborted.")
-            return
+                return
         elif choice == "r":
             print("Commit aborted.")
             return

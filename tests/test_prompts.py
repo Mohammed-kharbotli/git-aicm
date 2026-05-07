@@ -4,12 +4,12 @@ from aicm.prompts import FORMATS, PROMPTS, get_prompt
 def test_formats_list():
     assert "conventional" in FORMATS
     assert "simple" in FORMATS
-    assert "detailed" in FORMATS
 
 
 def test_all_formats_have_prompts():
     for fmt in FORMATS:
         assert fmt in PROMPTS
+        assert f"{fmt}_detailed" in PROMPTS
 
 
 def test_get_prompt_includes_diff():
@@ -31,5 +31,5 @@ def test_simple_prompt_is_short():
 
 
 def test_detailed_prompt_mentions_body():
-    prompt = get_prompt("detailed", "test")
+    prompt = get_prompt("conventional", "test", detailed=True)
     assert "bullet" in prompt.lower()

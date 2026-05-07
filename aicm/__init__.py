@@ -66,8 +66,9 @@ def cmd_config(args):
 
 
 def cmd_generate(args):
-    cli_overrides = {k: v for k, v in vars(args).items() if k not in ("command", "dry_run")}
+    cli_overrides = {k: v for k, v in vars(args).items() if k not in ("command", "dry_run", "detailed")}
     config = get_config(cli_overrides)
+    config["detailed"] = getattr(args, "detailed", False)
 
     if config["backend"] not in BACKENDS:
         err(f"Unknown backend: {config['backend']}. Use: {', '.join(BACKENDS)}")
@@ -88,7 +89,8 @@ def cmd_generate(args):
         diff = "\n".join(lines[:MAX_DIFF_LINES])
 
     context = config.get("context")
-    message = BACKENDS[config["backend"]](get_prompt(fmt, diff, stat=stat, context=context), config)
+    detailed = config.get("detailed", False)
+    message = BACKENDS[config["backend"]](get_prompt(fmt, diff, stat=stat, context=context, detailed=detailed), config)
     if not message:
         err("Backend returned an empty message. Try again or use a different model.")
 
@@ -120,6 +122,7 @@ def main():
         description="AI-powered git commit message generator",
         epilog="""Examples:
   git aicm                    # Generate commit message (default: ollama)
+  git aicm --detailed         # Include bullet points explaining changes
   git aicm --backend bedrock  # Use AWS Bedrock instead
   git aicm --context "deprecation fix"  # Give AI context about the change
   git aicm --dry-run          # Preview message without committing
@@ -149,6 +152,7 @@ def main():
     gen.add_argument("--format", choices=FORMATS, help="Commit message format")
     gen.add_argument("--ticket", help="Ticket reference (e.g. PROJ-123)")
     gen.add_argument("--context", help="Extra context for the AI (e.g. 'deprecation fix')")
+    gen.add_argument("--detailed", action="store_true", help="Include bullet points explaining changes")
     gen.add_argument("--dry-run", action="store_true", help="Print message without committing")
 
     # Root level arguments (for when no subcommand is used)
@@ -159,6 +163,7 @@ def main():
     parser.add_argument("--format", choices=FORMATS, dest="r_format", metavar="FORMAT", help="Commit message format")
     parser.add_argument("--ticket", dest="r_ticket", metavar="TICKET", help="Ticket reference (e.g. PROJ-123)")
     parser.add_argument("--context", dest="r_context", metavar="CONTEXT", help="Extra context for the AI (e.g. 'deprecation fix')")
+    parser.add_argument("--detailed", action="store_true", dest="r_detailed", help="Include bullet points explaining changes")
     parser.add_argument("--dry-run", action="store_true", dest="r_dry_run", help="Print message without committing")
 
     args = parser.parse_args()
@@ -180,6 +185,7 @@ def main():
             args.format = args.r_format
             args.ticket = args.r_ticket
             args.context = args.r_context
+            args.detailed = args.r_detailed
             args.dry_run = args.r_dry_run
             args.command = None
             cmd_generate(args)

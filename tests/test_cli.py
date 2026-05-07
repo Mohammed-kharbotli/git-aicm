@@ -24,6 +24,7 @@ def test_dry_run_no_interactive(capsys):
     args.r_format = None
     args.r_ticket = None
     args.r_context = None
+    args.r_detailed = False
     args.r_dry_run = True
 
     with patch("aicm.get_diff", return_value=diff), \
@@ -38,6 +39,7 @@ def test_dry_run_no_interactive(capsys):
         args.format = args.r_format
         args.ticket = args.r_ticket
         args.context = args.r_context
+        args.detailed = args.r_detailed
         args.dry_run = args.r_dry_run
         cmd_generate(args)
         mock_ic.assert_not_called()

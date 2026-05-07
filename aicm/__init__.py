@@ -87,7 +87,8 @@ def cmd_generate(args):
         stat = get_diff_stat()
         diff = "\n".join(lines[:MAX_DIFF_LINES])
 
-    message = BACKENDS[config["backend"]](get_prompt(fmt, diff, stat=stat), config)
+    context = config.get("context")
+    message = BACKENDS[config["backend"]](get_prompt(fmt, diff, stat=stat, context=context), config)
     if not message:
         err("Backend returned an empty message. Try again or use a different model.")
 
@@ -120,6 +121,7 @@ def main():
         epilog="""Examples:
   git aicm                    # Generate commit message (default: ollama)
   git aicm --backend bedrock  # Use AWS Bedrock instead
+  git aicm --context "deprecation fix"  # Give AI context about the change
   git aicm --dry-run          # Preview message without committing
   git aicm setup              # Interactive configuration
   git aicm config backend     # View current backend
@@ -146,6 +148,7 @@ def main():
     gen.add_argument("--profile", help="AWS profile name")
     gen.add_argument("--format", choices=FORMATS, help="Commit message format")
     gen.add_argument("--ticket", help="Ticket reference (e.g. PROJ-123)")
+    gen.add_argument("--context", help="Extra context for the AI (e.g. 'deprecation fix')")
     gen.add_argument("--dry-run", action="store_true", help="Print message without committing")
 
     # Root level arguments (for when no subcommand is used)
@@ -155,6 +158,7 @@ def main():
     parser.add_argument("--profile", dest="r_profile", metavar="PROFILE", help="AWS profile name")
     parser.add_argument("--format", choices=FORMATS, dest="r_format", metavar="FORMAT", help="Commit message format")
     parser.add_argument("--ticket", dest="r_ticket", metavar="TICKET", help="Ticket reference (e.g. PROJ-123)")
+    parser.add_argument("--context", dest="r_context", metavar="CONTEXT", help="Extra context for the AI (e.g. 'deprecation fix')")
     parser.add_argument("--dry-run", action="store_true", dest="r_dry_run", help="Print message without committing")
 
     args = parser.parse_args()
@@ -175,6 +179,7 @@ def main():
             args.profile = args.r_profile
             args.format = args.r_format
             args.ticket = args.r_ticket
+            args.context = args.r_context
             args.dry_run = args.r_dry_run
             args.command = None
             cmd_generate(args)

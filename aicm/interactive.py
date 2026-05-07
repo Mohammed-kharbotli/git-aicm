@@ -10,14 +10,11 @@ def _validate_commit_message(message):
     if not message or not message.strip():
         return False, "Empty commit message"
     
-    # Check for dangerous command injection patterns only
+    # Only block actual shell injection — not normal prose
     dangerous_patterns = [
-        r';\s*[a-zA-Z]',  # Semicolon command separator followed by commands
-        r'\|\s*[a-zA-Z]',  # Pipe followed by commands
         r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]',  # Control characters (excluding \t, \n, \r)
         r'\$\{[^}]*\}',  # Variable expansion ${var}
         r'\$\([^)]*\)',  # Command substitution $(cmd)
-        r'`[^`]+`',  # Backtick command substitution (only when paired with content)
     ]
     
     for pattern in dangerous_patterns:

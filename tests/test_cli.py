@@ -23,6 +23,7 @@ def test_dry_run_no_interactive(capsys):
     args.r_profile = None
     args.r_format = None
     args.r_ticket = None
+    args.r_context = None
     args.r_dry_run = True
 
     with patch("aicm.get_diff", return_value=diff), \
@@ -36,6 +37,7 @@ def test_dry_run_no_interactive(capsys):
         args.profile = args.r_profile
         args.format = args.r_format
         args.ticket = args.r_ticket
+        args.context = args.r_context
         args.dry_run = args.r_dry_run
         cmd_generate(args)
         mock_ic.assert_not_called()
@@ -56,7 +58,7 @@ def test_diff_truncation(capsys):
     with patch("aicm.get_diff", return_value=big_diff), \
          patch("aicm.get_diff_stat", return_value="file.py | 600 +++"), \
          patch("aicm.get_ticket", return_value=None), \
-         patch("aicm.get_config", return_value={"backend": "ollama", "format": "conventional", "ollama_url": "http://localhost:11434"}), \
+         patch("aicm.get_config", return_value={"backend": "ollama", "format": "conventional", "context": None, "ollama_url": "http://localhost:11434"}), \
          patch("aicm.BACKENDS", {"ollama": fake_backend}):
         cmd_generate(args)
 

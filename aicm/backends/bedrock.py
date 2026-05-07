@@ -17,8 +17,8 @@ def generate(prompt, config):
         err(f"AWS session error: {e}")
 
     model = config["model"]
-    # Strip region prefix (eu., us., ap.*) before validation
-    base_model = model.split(".", 1)[1] if "." in model and model.split(".", 1)[0] in ("eu", "us", "ap") else model
+    # Strip region prefix (eu., us., ap., me., af., etc.) before validation
+    base_model = model.split(".", 1)[1] if "." in model and len(model.split(".", 1)[0]) <= 2 else model
     valid_prefixes = ["anthropic.", "meta.", "mistral.", "amazon.titan"]
     if not any(base_model.startswith(prefix) for prefix in valid_prefixes):
         err(f"Unknown model: {model}. Use anthropic.*, meta.*, mistral.*, or amazon.titan* models")

@@ -128,6 +128,9 @@ git add .
 # generate a commit message (default: Ollama)
 git aicm
 
+# provide context so the AI knows *why* you're making the change
+git aicm --context "fixing deprecation warnings for v2 migration"
+
 # use Bedrock instead
 git aicm --backend bedrock
 
@@ -303,17 +306,29 @@ eval "$(git-aicm completions zsh)"
 eval "$(git-aicm completions bash)"
 ```
 
+## Context Flag
+
+The AI only sees the diff — it doesn't know *why* you're making a change. Use `--context` to give it a hint:
+
+```bash
+git aicm --context "deprecation fix for Rails 8"
+git aicm --context "tech debt cleanup from sprint 12"
+git aicm --context "performance optimization for large datasets"
+```
+
+This helps the AI pick the right commit type (`fix:`, `chore:`, `perf:`, etc.) instead of defaulting to `feat:`.
+
 ## How it works
 
 1. Reads `git diff --staged` (falls back to `git diff` if nothing staged)
-2. Sends the diff to the configured LLM backend
+2. Sends the diff + optional context to the configured LLM backend
 3. Streams the generated commit message in real time
 4. Appends ticket reference (from `--ticket` or branch name)
 5. Lets you commit, edit, or reject the message
 
 ## Security Features
 
-- **Input validation**: Prevents command injection in commit messages (semicolons, pipes, control chars blocked; `&` allowed for natural language)
+- **Input validation**: Prevents command injection in commit messages (variable expansion, command substitution, control chars blocked)
 - **Configuration validation**: Only accepts valid configuration keys and values
 - **API key validation**: Verifies API keys for format and functionality before use
 - **Safe subprocess handling**: Proper error handling for all git commands
@@ -321,7 +336,7 @@ eval "$(git-aicm completions bash)"
 - **SSRF protection**: Ollama URL scheme validated to `http://`/`https://` only
 - **Config file permissions**: Written with `0o600` to protect API keys
 - **Ticket validation**: Uses strict full-match to reject malformed ticket references
-- **Bedrock model validation**: Supports region-prefixed model IDs (`eu.`, `us.`, `ap.`)
+- **Bedrock model validation**: Supports region-prefixed model IDs (e.g. `eu.`, `us.`, `ap.`, `me.`, `af.`)
 
 ## License
 

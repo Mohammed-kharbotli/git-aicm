@@ -11,6 +11,10 @@ def generate(prompt, config):
     if not url.startswith(("http://", "https://")):
         err(f"Invalid Ollama URL scheme: {url}. Must start with http:// or https://")
 
+    model = config.get("model", "")
+    if not model:
+        err("No model specified. Set one with: git aicm config model <name>")
+
     try:
         urllib.request.urlopen(f"{url}/api/tags", timeout=5)
     except Exception:

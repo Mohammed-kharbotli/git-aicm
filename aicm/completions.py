@@ -11,7 +11,7 @@ def bash_completion():
     cur="${{COMP_WORDS[COMP_CWORD]}}"
     prev="${{COMP_WORDS[COMP_CWORD-1]}}"
     commands="setup config generate completions reinstall"
-    opts="--backend --model --ollama-url --profile --format --ticket --dry-run --version --help"
+    opts="--backend --model --ollama-url --profile --format --ticket --context --dry-run --version --help"
 
     case "$prev" in
         --backend)
@@ -62,6 +62,7 @@ _git-aicm() {{
         '--profile[AWS profile]:profile:_aws_profiles' \\
         '--format[Commit format]:format:({formats})' \\
         '--ticket[Ticket reference]:ticket:' \\
+        '--context[Extra context for the AI]:context:' \\
         '--dry-run[Print without committing]' \\
         '1:command:->cmds' \\
         '*::arg:->args'

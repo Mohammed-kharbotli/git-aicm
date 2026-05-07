@@ -38,16 +38,22 @@ def interactive_commit(message):
         print(f"Invalid commit message: {error}", file=sys.stderr)
         return
     
+    hook_failed = False
+
     while True:
-        choice = input("\n[c]ommit / [e]dit / [s]kip hooks / [r]eject? ").strip().lower()
+        if hook_failed:
+            choice = input("\n[c]ommit / [e]dit / [s]kip hooks / [r]eject? ").strip().lower()
+        else:
+            choice = input("\n[c]ommit / [e]dit / [r]eject? ").strip().lower()
         if choice in ("c", "s"):
             cmd = ["git", "commit", "-m", message]
-            if choice == "s":
+            if choice == "s" and hook_failed:
                 cmd.append("--no-verify")
             try:
                 subprocess.run(cmd, check=True)
                 return
             except subprocess.CalledProcessError:
+                hook_failed = True
                 print("Commit failed (hook or git error). Message preserved.", file=sys.stderr)
                 continue
         elif choice == "e":

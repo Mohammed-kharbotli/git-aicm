@@ -25,10 +25,10 @@ def _validate_config(config, backend_name):
     
     # Backend-specific validation
     if backend_name == "ollama":
-        return "ollama_url" in config and config["ollama_url"]
+        return bool(config.get("ollama_url"))
     elif backend_name == "anthropic":
-        return (config.get("anthropic_api_key") or 
-                "ANTHROPIC_API_KEY" in __import__("os").environ)
+        return bool(config.get("anthropic_api_key") or
+                    "ANTHROPIC_API_KEY" in __import__("os").environ)
     elif backend_name == "bedrock":
         return True  # AWS credentials validated elsewhere
     

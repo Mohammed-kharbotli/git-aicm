@@ -49,6 +49,7 @@ def test_diff_truncation(capsys):
     big_diff = "\n".join([f"+line {i}" for i in range(MAX_DIFF_LINES + 100)])
     args = MagicMock()
     args.dry_run = True
+    args.detailed = False
     args.ticket = None
 
     captured_prompt = []

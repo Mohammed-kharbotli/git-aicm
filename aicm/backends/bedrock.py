@@ -2,6 +2,18 @@ import json
 from aicm.utils import err
 
 
+def _stream_response(response, extract_text):
+    message = []
+    for event in response["body"]:
+        chunk = json.loads(event["chunk"]["bytes"])
+        text = extract_text(chunk)
+        if text:
+            print(text, end="", flush=True)
+            message.append(text)
+    print()
+    return "".join(message)
+
+
 def generate(prompt, config):
     try:
         import boto3
@@ -22,7 +34,7 @@ def generate(prompt, config):
     valid_prefixes = ["anthropic.", "meta.", "mistral.", "amazon.titan"]
     if not any(base_model.startswith(prefix) for prefix in valid_prefixes):
         err(f"Unknown model: {model}. Use anthropic.*, meta.*, mistral.*, or amazon.titan* models")
-    
+
     is_anthropic = "anthropic" in model
     is_meta = "meta" in model
     is_mistral = "mistral" in model
@@ -36,57 +48,25 @@ def generate(prompt, config):
                     "messages": [{"role": "user", "content": prompt}],
                 }),
             )
-            message = []
-            for event in response["body"]:
-                chunk = json.loads(event["chunk"]["bytes"])
-                if chunk["type"] == "content_block_delta":
-                    text = chunk["delta"].get("text", "")
-                    print(text, end="", flush=True)
-                    message.append(text)
-            print()
-            return "".join(message)
+            return _stream_response(response, lambda c: c["delta"].get("text", "") if c.get("type") == "content_block_delta" else "")
         elif is_meta:
             response = client.invoke_model_with_response_stream(
                 modelId=model,
                 body=json.dumps({"prompt": prompt, "max_gen_len": 256}),
             )
-            message = []
-            for event in response["body"]:
-                chunk = json.loads(event["chunk"]["bytes"])
-                text = chunk.get("generation", "")
-                if text:
-                    print(text, end="", flush=True)
-                    message.append(text)
-            print()
-            return "".join(message)
+            return _stream_response(response, lambda c: c.get("generation", ""))
         elif is_mistral:
             response = client.invoke_model_with_response_stream(
                 modelId=model,
                 body=json.dumps({"prompt": prompt, "max_tokens": 256}),
             )
-            message = []
-            for event in response["body"]:
-                chunk = json.loads(event["chunk"]["bytes"])
-                text = chunk.get("outputs", [{}])[0].get("text", "")
-                if text:
-                    print(text, end="", flush=True)
-                    message.append(text)
-            print()
-            return "".join(message)
+            return _stream_response(response, lambda c: c.get("outputs", [{}])[0].get("text", ""))
         else:
             response = client.invoke_model_with_response_stream(
                 modelId=model,
                 body=json.dumps({"inputText": prompt, "textGenerationConfig": {"maxTokenCount": 256}}),
             )
-            message = []
-            for event in response["body"]:
-                chunk = json.loads(event["chunk"]["bytes"])
-                text = chunk.get("outputText", chunk.get("completion", ""))
-                if text:
-                    print(text, end="", flush=True)
-                    message.append(text)
-            print()
-            return "".join(message)
+            return _stream_response(response, lambda c: c.get("outputText", c.get("completion", "")))
     except Exception as e:
         estr = str(e)
         if "AccessDenied" in estr:

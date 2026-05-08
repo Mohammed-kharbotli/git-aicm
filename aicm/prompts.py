@@ -1,8 +1,4 @@
-PROMPTS = {
-    "conventional": """Write a git commit message for this diff using Conventional Commits format.
-Rules:
-- First line: type(scope): description (max 72 chars)
-- Choose exactly ONE type from this list based on what the diff actually does:
+_CONVENTIONAL_TYPES = """- Choose exactly ONE type from this list based on what the diff actually does:
   feat = new feature or capability
   fix = bug fix or correcting broken behavior
   refactor = restructuring code without changing behavior
@@ -15,39 +11,32 @@ Rules:
   build = build system or external dependencies
 - Format: type(scope): description  OR  type: description
 - Do NOT combine types (e.g. "fix build:" is WRONG, pick the single best fit)
-- Do NOT default to feat
+- Do NOT default to feat"""
+
+PROMPTS = {
+    "conventional": f"""Write a git commit message for this diff using Conventional Commits format.
+Rules:
+- First line: type(scope): description (max 72 chars)
+{_CONVENTIONAL_TYPES}
 - Output ONLY the summary line, nothing else
 - Keep under 72 characters
 - ONLY describe changes that are visible in the diff. Do NOT invent or assume changes that are not shown
 - Return ONLY the commit message, no explanations
 
 Diff:
-{diff}""",
+{{diff}}""",
 
-    "conventional_detailed": """Write a git commit message for this diff using Conventional Commits format.
+    "conventional_detailed": f"""Write a git commit message for this diff using Conventional Commits format.
 Rules:
 - First line: type(scope): description (max 72 chars)
-- Choose exactly ONE type from this list based on what the diff actually does:
-  feat = new feature or capability
-  fix = bug fix or correcting broken behavior
-  refactor = restructuring code without changing behavior
-  docs = documentation only
-  test = adding or updating tests
-  chore = maintenance, dependencies, config
-  style = formatting, whitespace, no logic change
-  perf = performance improvement
-  ci = CI/CD pipeline changes
-  build = build system or external dependencies
-- Format: type(scope): description  OR  type: description
-- Do NOT combine types (e.g. "fix build:" is WRONG, pick the single best fit)
-- Do NOT default to feat
+{_CONVENTIONAL_TYPES}
 - After the summary, add a blank line then bullet points explaining key changes
 - Keep total message under 350 characters
 - ONLY describe changes that are visible in the diff. Do NOT invent or assume changes that are not shown
 - Return ONLY the commit message, no explanations
 
 Diff:
-{diff}""",
+{{diff}}""",
 
     "simple": """Write a git commit message for this diff.
 Rules:

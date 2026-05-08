@@ -61,7 +61,6 @@ def setup(config):
 
 
 def _validate_api_key(api_key):
-    """Validate API key by making a test request to Anthropic."""
     import re
     
     # Basic format validation first

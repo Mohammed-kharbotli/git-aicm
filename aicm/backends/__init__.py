@@ -15,7 +15,6 @@ ALLOWED_BACKENDS = {"bedrock", "ollama", "anthropic"}
 
 
 def _validate_config(config, backend_name):
-    """Validate configuration for a specific backend."""
     if not isinstance(config, dict):
         return False
     
@@ -36,7 +35,6 @@ def _validate_config(config, backend_name):
 
 
 def _make_validated_generate(backend_name, original_func):
-    """Create a validated wrapper for generate function."""
     def validated_generate(prompt, config):
         if not _validate_config(config, backend_name):
             from aicm.utils import err

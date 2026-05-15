@@ -161,6 +161,13 @@ install_git_aicm() {
     
     ln -s "$INSTALL_DIR/git-aicm" "$BIN_DIR/git-aicm"
     
+    # Remove existing venv so it rebuilds with fresh metadata on next run
+    local venv="${AICM_VENV:-$HOME/.venvs/git-aicm}"
+    if [[ -d "$venv" ]]; then
+        info "Removing old venv (will rebuild on next run)..."
+        rm -rf "$venv"
+    fi
+
     success "git-aicm installed successfully"
 }
 

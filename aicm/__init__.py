@@ -220,3 +220,11 @@ def main():
     except KeyboardInterrupt:
         print("\nAborted.", file=sys.stderr)
         sys.exit(130)
+
+    try:
+        from aicm.update import check_for_update
+        latest = check_for_update(__version__)
+        if latest:
+            print(f"\nUpdate available: {__version__} → {latest}. Run: curl -fsSL https://raw.githubusercontent.com/Mohammed-kharbotli/git-aicm/main/install.sh | bash", file=sys.stderr)
+    except Exception:
+        pass

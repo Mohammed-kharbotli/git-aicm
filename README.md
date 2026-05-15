@@ -303,6 +303,13 @@ Reinstall the tool (resets the virtual environment):
 git aicm reinstall
 ```
 
+Switch to the recommended model (if upgrading from an older version):
+
+```bash
+ollama pull qwen2.5-coder:7b
+git aicm config model qwen2.5-coder:7b
+```
+
 ## Shell Completions
 
 Tab completions for subcommands, backends, formats, and flags.

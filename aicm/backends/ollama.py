@@ -5,6 +5,13 @@ import urllib.error
 from aicm.utils import err
 
 
+def _check_server(url):
+    try:
+        urllib.request.urlopen(f"{url}/api/tags", timeout=5)
+    except Exception:
+        err(f"Cannot reach Ollama at {url}. Is it running? Start with: ollama serve")
+
+
 def generate(prompt, config):
     url = config["ollama_url"]
 
@@ -15,10 +22,7 @@ def generate(prompt, config):
     if not model:
         err("No model specified. Set one with: git aicm config model <name>")
 
-    try:
-        urllib.request.urlopen(f"{url}/api/tags", timeout=5)
-    except Exception:
-        err(f"Cannot reach Ollama at {url}. Is it running? Start with: ollama serve")
+    _check_server(url)
 
     req = urllib.request.Request(
         f"{url}/api/generate",
@@ -63,10 +67,7 @@ def setup(config):
     config["ollama_url"] = url or config.get("ollama_url", "http://localhost:11434")
     url = config["ollama_url"]
 
-    try:
-        urllib.request.urlopen(f"{url}/api/tags", timeout=5)
-    except Exception:
-        err("Ollama is not running. Start it with: ollama serve")
+    _check_server(url)
 
     model = config.get("model", "")
     # Validate model name to prevent command injection

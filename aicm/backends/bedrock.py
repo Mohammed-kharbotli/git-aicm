@@ -14,19 +14,28 @@ def _stream_response(response, extract_text):
     return "".join(message)
 
 
-def generate(prompt, config):
+def _import_boto3():
     try:
         import boto3
+        return boto3
     except ImportError:
         err("boto3 not installed. Reinstall with: pipx install --force '.[bedrock]'")
+
+
+def _get_client(config):
+    boto3 = _import_boto3()
     try:
         session = boto3.Session(profile_name=config.get("profile"))
-        client = session.client("bedrock-runtime")
+        return session.client("bedrock-runtime")
     except Exception as e:
-        if "SSO" in str(e):
+        if "SSO" in str(e) or "expired" in str(e):
             profile = config.get("profile", "default")
             err(f"SSO session expired. Run: aws sso login --profile {profile}")
         err(f"AWS session error: {e}")
+
+
+def generate(prompt, config):
+    client = _get_client(config)
 
     model = config["model"]
     # Strip region prefix (eu., us., ap., me., af., etc.) before validation
@@ -82,13 +91,11 @@ def setup(config):
     profile = input("\nAWS profile (leave empty for default): ").strip() or None
     if profile:
         config["profile"] = profile
+    boto3 = _import_boto3()
     try:
-        import boto3
         session = boto3.Session(profile_name=config.get("profile"))
         session.client("sts").get_caller_identity()
         print("\nAWS credentials verified.")
-    except ImportError:
-        err("boto3 not installed. Reinstall with: pipx install --force '.[bedrock]'")
     except Exception as e:
         err(f"AWS credentials issue: {e}")
     return config

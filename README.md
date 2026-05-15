@@ -147,10 +147,11 @@ git aicm --dry-run
 After generating, you'll be prompted to:
 - **c** — commit with the generated message
 - **e** — edit the message in your `$EDITOR` before committing
-- **s** — skip hooks (commit with `--no-verify`)
 - **r** — reject and abort
 
-If a commit fails (e.g. a pre-commit hook rejects it), the message is preserved and you can retry, edit, skip hooks, or reject.
+If a commit fails (e.g. a pre-commit hook rejects it), the message is preserved and you can retry, edit, skip hooks, fix later, or reject.
+
+Choosing **f** (fix & retry later) saves the message to `.git/AICM_MSG` and exits so you can fix your code. Next time you run `git aicm`, it automatically detects the saved message and offers to commit, edit, or discard it.
 
 ## Configuration
 
@@ -339,14 +340,17 @@ This helps the AI pick the right commit type (`fix:`, `chore:`, `perf:`, etc.) i
 ## Security Features
 
 - **Input validation**: Prevents command injection in commit messages (variable expansion, command substitution, control chars blocked)
+- **Prompt injection mitigation**: User context is escaped and delimited to prevent instruction override
 - **Configuration validation**: Only accepts valid configuration keys and values
-- **API key validation**: Verifies API keys for format and functionality before use
-- **Safe subprocess handling**: Proper error handling for all git commands
-- **Length limits**: Prevents memory exhaustion from large diffs (1MB limit)
+- **API key validation**: Verifies API keys via non-billable `models.list` call
+- **Safe subprocess handling**: Proper error handling and returncode checking for all git commands
+- **Length limits**: Enforced at source — diff 1MB, stat 100KB, context 500 chars
 - **SSRF protection**: Ollama URL scheme validated to `http://`/`https://` only
 - **Config file permissions**: Written with `0o600` to protect API keys
+- **TOML escaping**: Backslashes and quotes escaped during config serialization
 - **Ticket validation**: Uses strict full-match to reject malformed ticket references
 - **Bedrock model validation**: Supports region-prefixed model IDs (e.g. `eu.`, `us.`, `ap.`, `me.`, `af.`)
+- **Non-TTY safety**: Prints informative message and skips interactive commit when stdin is not a terminal
 
 ## License
 

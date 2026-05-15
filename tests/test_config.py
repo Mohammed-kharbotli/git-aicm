@@ -64,3 +64,19 @@ def test_get_config_cli_beats_file(tmp_path):
         save_config({"backend": "ollama", "model": "llama3.2"})
         config = get_config({"model": "codellama"})
         assert config["model"] == "codellama"
+
+
+def test_save_config_escapes_special_chars(tmp_path):
+    config_path = tmp_path / "config.toml"
+    with patch("aicm.config.CONFIG_PATH", config_path):
+        save_config({"ollama_url": 'http://host/path?a=1&b="2"'})
+        loaded = load_config()
+        assert loaded["ollama_url"] == 'http://host/path?a=1&b="2"'
+
+
+def test_save_config_escapes_backslashes(tmp_path):
+    config_path = tmp_path / "config.toml"
+    with patch("aicm.config.CONFIG_PATH", config_path):
+        save_config({"model": "path\\to\\model"})
+        loaded = load_config()
+        assert loaded["model"] == "path\\to\\model"

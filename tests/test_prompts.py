@@ -33,3 +33,25 @@ def test_simple_prompt_is_short():
 def test_detailed_prompt_mentions_body():
     prompt = get_prompt("conventional", "test", detailed=True)
     assert "bullet" in prompt.lower()
+
+
+def test_context_escaping():
+    prompt = get_prompt("simple", "test", context="fix for {issue}")
+    assert "use this to understand intent" in prompt
+    assert "{{issue}}" in prompt  # braces should be doubled
+
+
+def test_context_length_limit():
+    try:
+        get_prompt("simple", "test", context="x" * 501)
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "500" in str(e)
+
+
+def test_diff_size_limit():
+    try:
+        get_prompt("simple", "x" * 1_000_001)
+        assert False, "Should have raised ValueError"
+    except ValueError as e:
+        assert "1MB" in str(e)

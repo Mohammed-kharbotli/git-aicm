@@ -5,44 +5,52 @@ from aicm.utils import err
 TICKET_PATTERN = re.compile(r"[A-Z][A-Z0-9]+-\d+")
 
 
-def get_diff():
+def get_git_dir():
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--git-dir"], capture_output=True, text=True
         )
         if result.returncode != 0:
-            err("Not a git repository. Run this from inside a git project.")
-        
-        # Try staged diff first
-        diff = subprocess.run(
-            ["git", "diff", "--staged"], capture_output=True, text=True
-        ).stdout.strip()
-        
-        # Only try unstaged if staged is empty
-        if not diff:
-            diff = subprocess.run(
-                ["git", "diff"], capture_output=True, text=True
-            ).stdout.strip()
-        return diff
+            return None
+        return result.stdout.strip()
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return None
+
+
+def _staged_or_unstaged(*extra_args):
+    try:
+        proc = subprocess.run(
+            ["git", "diff", "--staged", *extra_args], capture_output=True, text=True
+        )
+        if proc.returncode != 0:
+            err(f"Git command failed: {proc.stderr.strip()}")
+        result = proc.stdout.strip()
+        if not result:
+            proc = subprocess.run(
+                ["git", "diff", *extra_args], capture_output=True, text=True
+            )
+            if proc.returncode != 0:
+                err(f"Git command failed: {proc.stderr.strip()}")
+            result = proc.stdout.strip()
+        return result
     except (subprocess.SubprocessError, FileNotFoundError) as e:
         err(f"Git command failed: {e}")
+
+
+def get_diff():
+    if not get_git_dir():
+        err("Not a git repository. Run this from inside a git project.")
+    diff = _staged_or_unstaged()
+    if diff and len(diff) > 1_000_000:
+        err("Diff is too large (>1MB). Break your changes into smaller commits.")
+    return diff
 
 
 def get_diff_stat():
-    try:
-        # Try staged diff stat first
-        stat = subprocess.run(
-            ["git", "diff", "--staged", "--stat"], capture_output=True, text=True
-        ).stdout.strip()
-        
-        # Only try unstaged if staged is empty
-        if not stat:
-            stat = subprocess.run(
-                ["git", "diff", "--stat"], capture_output=True, text=True
-            ).stdout.strip()
-        return stat
-    except (subprocess.SubprocessError, FileNotFoundError) as e:
-        err(f"Git command failed: {e}")
+    stat = _staged_or_unstaged("--stat")
+    if stat and len(stat) > 100_000:
+        err("Diff stat is too large (>100KB). Break your changes into smaller commits.")
+    return stat
 
 
 def get_ticket():

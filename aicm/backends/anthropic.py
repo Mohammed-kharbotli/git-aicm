@@ -63,23 +63,17 @@ def setup(config):
 def _validate_api_key(api_key):
     import re
     
-    # Basic format validation first
     if not re.match(r'^sk-ant-[a-zA-Z0-9_-]{20,}$', api_key):
         return False
         
     try:
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)
-        # Make a minimal test request
-        client.messages.create(
-            model="claude-3-haiku-20240307",  # Use cheapest model for validation
-            max_tokens=1,
-            messages=[{"role": "user", "content": "test"}]
-        )
+        client.models.list(limit=1)
         return True
     except anthropic.AuthenticationError:
         return False
-    except Exception:
-        # For other errors (network, etc.), assume key format is valid
-        # but we can't verify connectivity
+    except (anthropic.APIConnectionError, anthropic.RateLimitError):
         return True
+    except Exception:
+        return False

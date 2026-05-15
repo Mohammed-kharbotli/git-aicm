@@ -29,6 +29,7 @@ def test_dry_run_no_interactive(capsys):
 
     with patch("aicm.get_diff", return_value=diff), \
          patch("aicm.get_ticket", return_value=None), \
+         patch("aicm.load_message", return_value=None), \
          patch("aicm.BACKENDS", {"ollama": lambda p, c: "feat: test"}), \
          patch("aicm.interactive_commit") as mock_ic:
         # Simulate the root-level arg mapping
@@ -61,6 +62,7 @@ def test_diff_truncation(capsys):
     with patch("aicm.get_diff", return_value=big_diff), \
          patch("aicm.get_diff_stat", return_value="file.py | 600 +++"), \
          patch("aicm.get_ticket", return_value=None), \
+         patch("aicm.load_message", return_value=None), \
          patch("aicm.get_config", return_value={"backend": "ollama", "format": "conventional", "context": None, "ollama_url": "http://localhost:11434"}), \
          patch("aicm.BACKENDS", {"ollama": fake_backend}):
         cmd_generate(args)
@@ -80,3 +82,36 @@ def test_keyboard_interrupt(capsys):
         except SystemExit as e:
             assert e.code == 130
     assert "Aborted" in capsys.readouterr().err
+
+
+def test_saved_message_auto_detect(capsys):
+    args = MagicMock()
+    args.dry_run = False
+    args.detailed = False
+    args.ticket = None
+
+    with patch("aicm.load_message", return_value="feat: saved msg"), \
+         patch("aicm.sys.stdin.isatty", return_value=True), \
+         patch("builtins.input", return_value="c"), \
+         patch("aicm.interactive_commit") as mock_ic:
+        cmd_generate(args)
+        mock_ic.assert_called_once_with("feat: saved msg")
+
+
+def test_saved_message_discard(capsys):
+    diff = "diff --git a/f.py\n+hello"
+    args = MagicMock()
+    args.dry_run = True
+    args.detailed = False
+    args.ticket = None
+
+    with patch("aicm.load_message", return_value="feat: old msg"), \
+         patch("aicm.sys.stdin.isatty", return_value=True), \
+         patch("builtins.input", return_value="d"), \
+         patch("aicm.clear_message") as mock_clear, \
+         patch("aicm.get_diff", return_value=diff), \
+         patch("aicm.get_ticket", return_value=None), \
+         patch("aicm.get_config", return_value={"backend": "ollama", "format": "conventional", "context": None, "ollama_url": "http://localhost:11434"}), \
+         patch("aicm.BACKENDS", {"ollama": lambda p, c: "feat: new msg"}):
+        cmd_generate(args)
+        mock_clear.assert_called_once()

@@ -4,9 +4,9 @@ from importlib.metadata import version as _pkg_version
 
 from aicm.backends import BACKENDS
 from aicm.completions import cmd_completions
-from aicm.config import get_config, load_config, load_project_config, save_config, CONFIG_PATH
+from aicm.config import get_config, load_config, load_project_config, save_config
 from aicm.git import get_diff, get_diff_stat, get_ticket, TICKET_PATTERN
-from aicm.interactive import interactive_commit
+from aicm.interactive import interactive_commit, load_message, clear_message
 from aicm.prompts import FORMATS, get_prompt
 from aicm.setup import cmd_setup
 from aicm.utils import err
@@ -17,6 +17,22 @@ except Exception:
     __version__ = "0.1.0"
 
 MAX_DIFF_LINES = 500
+
+_DOC_EXTENSIONS = {".md", ".rst", ".txt", ".toml", ".cfg", ".ini", ".yaml", ".yml", ".json"}
+
+
+def _prioritize_code_hunks(lines, limit):
+    code_lines = []
+    doc_lines = []
+    current = code_lines
+    for line in lines:
+        if line.startswith("diff --git"):
+            parts = line.split()
+            path = parts[-1] if parts else ""
+            current = doc_lines if any(path.endswith(ext) for ext in _DOC_EXTENSIONS) else code_lines
+        current.append(line)
+    combined = code_lines + doc_lines
+    return "\n".join(combined[:limit])
 
 
 def cmd_config(args):
@@ -66,6 +82,18 @@ def cmd_config(args):
 
 
 def cmd_generate(args):
+    saved = load_message()
+    if saved and sys.stdin.isatty():
+        print(f"Found saved message:\n\n{saved}\n")
+        choice = input("[c]ommit / [e]dit / [d]iscard and regenerate? ").strip().lower()
+        if choice in ("c", "e"):
+            interactive_commit(saved)
+            return
+        elif choice == "d":
+            clear_message()
+        else:
+            return
+
     cli_overrides = {k: v for k, v in vars(args).items() if k not in ("command", "dry_run", "detailed")}
     config = get_config(cli_overrides)
     config["detailed"] = getattr(args, "detailed", False)
@@ -86,7 +114,7 @@ def cmd_generate(args):
     if len(lines) > MAX_DIFF_LINES:
         print(f"Diff is {len(lines)} lines, summarizing with stats + key hunks.", file=sys.stderr)
         stat = get_diff_stat()
-        diff = "\n".join(lines[:MAX_DIFF_LINES])
+        diff = _prioritize_code_hunks(lines, MAX_DIFF_LINES)
 
     context = config.get("context")
     detailed = config.get("detailed", False)

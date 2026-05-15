@@ -11,8 +11,8 @@ license = {text = "MIT"}
 dependencies = []
 
 [project.optional-dependencies]
-bedrock = ["boto3"]
-anthropic = ["anthropic"]
+bedrock = ["boto3>=1.28"]
+anthropic = ["anthropic>=0.18"]
 python39 = ["tomli"]
 test = ["pytest"]
 

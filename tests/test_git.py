@@ -1,7 +1,7 @@
 from unittest.mock import patch, MagicMock
 import subprocess
 
-from aicm.git import get_diff, get_ticket, TICKET_PATTERN
+from aicm.git import get_diff, get_diff_stat, get_ticket, get_git_dir, TICKET_PATTERN
 
 
 def _mock_run(results):
@@ -9,6 +9,23 @@ def _mock_run(results):
     def side_effect(*args, **kwargs):
         return next(calls)
     return side_effect
+
+
+def test_get_git_dir():
+    result = MagicMock(stdout=".git", returncode=0)
+    with patch("aicm.git.subprocess.run", return_value=result):
+        assert get_git_dir() == ".git"
+
+
+def test_get_git_dir_not_repo():
+    result = MagicMock(stdout="", returncode=128)
+    with patch("aicm.git.subprocess.run", return_value=result):
+        assert get_git_dir() is None
+
+
+def test_get_git_dir_exception():
+    with patch("aicm.git.subprocess.run", side_effect=FileNotFoundError):
+        assert get_git_dir() is None
 
 
 def test_get_diff_staged():
@@ -72,3 +89,41 @@ def test_ticket_pattern():
     assert TICKET_PATTERN.search("ABC-1").group(0) == "ABC-1"
     assert TICKET_PATTERN.search("A2B-99").group(0) == "A2B-99"
     assert TICKET_PATTERN.search("lowercase-123") is None
+
+
+def test_get_diff_too_large():
+    rev_parse = MagicMock(stdout=".", returncode=0)
+    big = MagicMock(stdout="x" * 1_000_001, returncode=0)
+    with patch("aicm.git.subprocess.run", side_effect=_mock_run([rev_parse, big])):
+        try:
+            get_diff()
+            assert False, "Should have called sys.exit"
+        except SystemExit:
+            pass
+
+
+def test_get_diff_returncode_failure():
+    rev_parse = MagicMock(stdout=".", returncode=0)
+    failed = MagicMock(stdout="", stderr="error: bad index", returncode=1)
+    with patch("aicm.git.subprocess.run", side_effect=_mock_run([rev_parse, failed])):
+        try:
+            get_diff()
+            assert False, "Should have called sys.exit"
+        except SystemExit:
+            pass
+
+
+def test_get_diff_stat_too_large():
+    big_stat = MagicMock(stdout="x" * 100_001, returncode=0)
+    with patch("aicm.git.subprocess.run", return_value=big_stat):
+        try:
+            get_diff_stat()
+            assert False, "Should have called sys.exit"
+        except SystemExit:
+            pass
+
+
+def test_get_diff_stat_normal():
+    stat = MagicMock(stdout="file.py | 10 +++", returncode=0)
+    with patch("aicm.git.subprocess.run", return_value=stat):
+        assert get_diff_stat() == "file.py | 10 +++"

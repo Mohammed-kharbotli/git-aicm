@@ -85,11 +85,11 @@ def install_completions():
     if not rc:
         return
     line = COMPLETION_LINE.format(shell=shell)
-    if rc.exists() and line in rc.read_text():
+    content = rc.read_text() if rc.exists() else ""
+    if line in content:
         return
     choice = input(f"\nEnable tab completions in {rc.name}? [Y/n] ").strip().lower()
     if choice in ("", "y", "yes"):
-        # Create backup before modifying
         backup_path = rc.with_suffix(f"{rc.suffix}.backup.{int(__import__('time').time())}")
         try:
             if rc.exists():
@@ -98,15 +98,12 @@ def install_completions():
                 print(f"Backup created: {backup_path}")
             
             with open(rc, "a") as f:
-                # Ensure we start on a new line
-                if rc.exists() and rc.stat().st_size > 0:
-                    content = rc.read_text()
-                    if not content.endswith("\n"):
-                        f.write("\n")
+                if content and not content.endswith("\n"):
+                    f.write("\n")
                 f.write(f"\n# git-aicm completions\n{line}\n")
             print(f"Completions added to {rc}. Restart your shell or run: source {rc}")
         except OSError as e:
             import sys
             print(f"Failed to modify {rc}: {e}", file=sys.stderr)
             if backup_path.exists():
-                backup_path.unlink()  # Remove backup if we failed
+                backup_path.unlink()

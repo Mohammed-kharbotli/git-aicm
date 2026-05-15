@@ -4,6 +4,37 @@ import subprocess
 import sys
 import tempfile
 
+from aicm.git import get_git_dir
+
+
+def _msg_path():
+    git_dir = get_git_dir()
+    if not git_dir:
+        return None
+    return os.path.join(git_dir, "AICM_MSG")
+
+
+def save_message(message):
+    path = _msg_path()
+    if path:
+        with open(path, "w") as f:
+            f.write(message)
+    return path
+
+
+def load_message():
+    path = _msg_path()
+    if path and os.path.exists(path):
+        with open(path) as f:
+            return f.read().strip()
+    return None
+
+
+def clear_message():
+    path = _msg_path()
+    if path and os.path.exists(path):
+        os.unlink(path)
+
 
 def _validate_commit_message(message):
     if not message or not message.strip():
@@ -39,6 +70,7 @@ def _try_commit(message, skip_hooks=False):
 
 def interactive_commit(message):
     if not sys.stdin.isatty():
+        print("Not a terminal, skipping interactive commit.", file=sys.stderr)
         return
 
     is_valid, error = _validate_commit_message(message)
@@ -50,14 +82,19 @@ def interactive_commit(message):
 
     while True:
         if hook_failed:
-            choice = input("\n[c]ommit / [e]dit / [s]kip hooks / [r]eject? ").strip().lower()
+            choice = input("\n[c]ommit / [e]dit / [s]kip hooks / [f]ix & retry later / [r]eject? ").strip().lower()
         else:
             choice = input("\n[c]ommit / [e]dit / [r]eject? ").strip().lower()
         if choice in ("c", "s"):
             if _try_commit(message, skip_hooks=(choice == "s" and hook_failed)):
+                clear_message()
                 return
             hook_failed = True
             continue
+        elif choice == "f" and hook_failed:
+            path = save_message(message)
+            print("Message saved. Fix your code, then run: git aicm")
+            return
         elif choice == "e":
             edited_message = edit_message(message)
             if edited_message:
@@ -65,6 +102,7 @@ def interactive_commit(message):
                 if is_valid:
                     message = edited_message
                     if _try_commit(message):
+                        clear_message()
                         return
                     hook_failed = True
                     continue

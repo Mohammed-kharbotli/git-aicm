@@ -77,7 +77,8 @@ def save_config(config, project=False):
     lines = []
     for k, v in config.items():
         if v is not None:
-            lines.append(f'{k} = "{v}"')
+            escaped = str(v).replace('\\', '\\\\').replace('"', '\\"')
+            lines.append(f'{k} = "{escaped}"')
     try:
         path.write_text("\n".join(lines) + "\n")
         import os

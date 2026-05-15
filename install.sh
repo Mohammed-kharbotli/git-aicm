@@ -67,7 +67,7 @@ check_dependencies() {
 }
 
 detect_install_method() {
-    if command -v git >/dev/null 2>&1 && [[ -n "${GITHUB_REPOSITORY:-}" || -d ".git" ]]; then
+    if command -v git >/dev/null 2>&1 && [[ -n "${GITHUB_REPOSITORY:-}" ]]; then
         echo "git"
     elif command -v curl >/dev/null 2>&1; then
         echo "curl"
@@ -83,38 +83,29 @@ download_with_git() {
     git clone "$REPO_URL" "$TEMP_DIR"
 }
 
-download_with_curl() {
-    info "Downloading with curl..."
-    mkdir -p "$TEMP_DIR"
-    
-    # Download main branch as zip
-    curl -fsSL "$REPO_URL/archive/refs/heads/main.zip" -o "$TEMP_DIR/repo.zip"
-    
-    # Extract (try different unzip commands)
+extract_archive() {
     if command -v unzip >/dev/null 2>&1; then
         unzip -q "$TEMP_DIR/repo.zip" -d "$TEMP_DIR"
         mv "$TEMP_DIR"/git-aicm-main/* "$TEMP_DIR/"
         rmdir "$TEMP_DIR/git-aicm-main"
+        rm -f "$TEMP_DIR/repo.zip"
     else
         error "unzip is required to extract the downloaded archive"
     fi
 }
 
+download_with_curl() {
+    info "Downloading with curl..."
+    mkdir -p "$TEMP_DIR"
+    curl -fsSL "$REPO_URL/archive/refs/heads/main.zip" -o "$TEMP_DIR/repo.zip"
+    extract_archive
+}
+
 download_with_wget() {
     info "Downloading with wget..."
     mkdir -p "$TEMP_DIR"
-    
-    # Download main branch as zip
     wget -q "$REPO_URL/archive/refs/heads/main.zip" -O "$TEMP_DIR/repo.zip"
-    
-    # Extract
-    if command -v unzip >/dev/null 2>&1; then
-        unzip -q "$TEMP_DIR/repo.zip" -d "$TEMP_DIR"
-        mv "$TEMP_DIR"/git-aicm-main/* "$TEMP_DIR/"
-        rmdir "$TEMP_DIR/git-aicm-main"
-    else
-        error "unzip is required to extract the downloaded archive"
-    fi
+    extract_archive
 }
 
 install_git_aicm() {

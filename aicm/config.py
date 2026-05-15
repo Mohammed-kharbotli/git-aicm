@@ -15,7 +15,7 @@ DEFAULTS = {
 
 MODEL_DEFAULTS = {
     "bedrock": "eu.anthropic.claude-sonnet-4-20250514-v1:0",
-    "ollama": "llama3.2",
+    "ollama": "qwen2.5-coder:7b",
     "anthropic": "claude-sonnet-4-20250514",
 }
 

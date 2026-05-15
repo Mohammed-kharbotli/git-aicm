@@ -7,7 +7,7 @@ Stop writing commit messages. Let AI read your diff and do the boring part — y
 
 `git add . && git aicm` — that's it. Your diff goes to an LLM, a commit message streams back in real time, and you choose: commit, edit, or reject.
 
-The default backend is **Ollama** with **llama3.2** — fully local, fully free, no API keys needed.
+The default backend is **Ollama** with **qwen2.5-coder:7b** — fully local, fully free, no API keys needed.
 
 ## Prerequisites
 
@@ -29,7 +29,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 
 Then pull the default model and start the server:
 ```bash
-ollama pull llama3.2
+ollama pull qwen2.5-coder:7b
 ollama serve
 ```
 
@@ -187,7 +187,7 @@ Create `~/.aicm.toml`:
 
 ```toml
 backend = "ollama"
-model = "llama3.2"
+model = "qwen2.5-coder:7b"
 ollama_url = "http://localhost:11434"
 profile = "my-aws-profile"
 format = "conventional"

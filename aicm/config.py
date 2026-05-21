@@ -1,9 +1,18 @@
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 CONFIG_PATH = Path.home() / ".aicm.toml"
 PROJECT_CONFIG_NAME = ".aicm.toml"
+
+VALID_KEYS = {
+    "backend", "model", "ollama_url", "profile", "format",
+    "anthropic_api_key", "ticket",
+}
+
+VALID_BACKENDS = {"ollama", "bedrock", "anthropic"}
+VALID_FORMATS = {"conventional", "simple"}
 
 DEFAULTS = {
     "backend": "ollama",
@@ -24,6 +33,32 @@ BACKEND_DEPS = {
     "anthropic": "anthropic",
 }
 
+_TICKET_RE = re.compile(r"[A-Z][A-Z0-9]+-\d+")
+
+
+def validate_config_value(key, value):
+    if key not in VALID_KEYS:
+        return f"Invalid config key: {key}. Valid keys: {', '.join(sorted(VALID_KEYS))}"
+    if not isinstance(value, str) or not value.strip():
+        return f"Value for '{key}' must be a non-empty string"
+    if len(value) > 500:
+        return f"Value for '{key}' is too long (max 500 chars)"
+    if key == "backend" and value not in VALID_BACKENDS:
+        return f"Invalid backend: {value}. Use: {', '.join(sorted(VALID_BACKENDS))}"
+    if key == "format" and value not in VALID_FORMATS:
+        return f"Invalid format: {value}. Use: {', '.join(sorted(VALID_FORMATS))}"
+    if key == "ollama_url" and not value.startswith(("http://", "https://")):
+        return f"Invalid URL: {value}. Must start with http:// or https://"
+    if key == "model" and not re.match(r'^[a-zA-Z0-9._:/-]+$', value):
+        return f"Invalid model name: {value}. Only alphanumeric, dots, colons, slashes, hyphens allowed"
+    if key == "profile" and not re.match(r'^[a-zA-Z0-9_-]+$', value):
+        return f"Invalid profile name: {value}. Only alphanumeric, hyphens, underscores allowed"
+    if key == "anthropic_api_key" and not re.match(r'^sk-ant-[a-zA-Z0-9_-]+$', value):
+        return f"Invalid API key format. Anthropic keys start with 'sk-ant-'"
+    if key == "ticket" and not _TICKET_RE.fullmatch(value):
+        return f"Invalid ticket format: {value}. Expected: PROJ-123"
+    return None
+
 
 def _load_toml(path):
     if not path.exists():
@@ -37,7 +72,8 @@ def _load_toml(path):
             import tomli as tomllib
     try:
         with open(path, "rb") as f:
-            return tomllib.load(f)
+            data = tomllib.load(f)
+        return {k: v for k, v in data.items() if k in VALID_KEYS}
     except Exception:
         return {}
 

@@ -2,7 +2,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
-from aicm.config import DEFAULTS, MODEL_DEFAULTS, get_config, load_config, save_config
+from aicm.config import DEFAULTS, MODEL_DEFAULTS, VALID_KEYS, get_config, load_config, save_config, validate_config_value
 
 
 def test_defaults():
@@ -80,3 +80,68 @@ def test_save_config_escapes_backslashes(tmp_path):
         save_config({"model": "path\\to\\model"})
         loaded = load_config()
         assert loaded["model"] == "path\\to\\model"
+
+
+def test_validate_config_value_invalid_key():
+    assert validate_config_value("foo", "bar") is not None
+    assert "Invalid config key" in validate_config_value("foo", "bar")
+
+
+def test_validate_config_value_empty():
+    assert validate_config_value("backend", "") is not None
+    assert validate_config_value("backend", "   ") is not None
+
+
+def test_validate_config_value_too_long():
+    assert validate_config_value("model", "a" * 501) is not None
+
+
+def test_validate_config_value_backend():
+    assert validate_config_value("backend", "ollama") is None
+    assert validate_config_value("backend", "bedrock") is None
+    assert validate_config_value("backend", "invalid") is not None
+
+
+def test_validate_config_value_format():
+    assert validate_config_value("format", "conventional") is None
+    assert validate_config_value("format", "simple") is None
+    assert validate_config_value("format", "fancy") is not None
+
+
+def test_validate_config_value_ollama_url():
+    assert validate_config_value("ollama_url", "http://localhost:11434") is None
+    assert validate_config_value("ollama_url", "https://my-server.com") is None
+    assert validate_config_value("ollama_url", "ftp://bad") is not None
+
+
+def test_validate_config_value_model():
+    assert validate_config_value("model", "qwen2.5-coder:7b") is None
+    assert validate_config_value("model", "eu.anthropic.claude-sonnet-4-20250514-v1:0") is None
+    assert validate_config_value("model", "model with spaces") is not None
+    assert validate_config_value("model", "model;injection") is not None
+
+
+def test_validate_config_value_profile():
+    assert validate_config_value("profile", "my-profile") is None
+    assert validate_config_value("profile", "dev_account") is None
+    assert validate_config_value("profile", "has spaces") is not None
+
+
+def test_validate_config_value_ticket():
+    assert validate_config_value("ticket", "PROJ-123") is None
+    assert validate_config_value("ticket", "proj-123") is not None
+    assert validate_config_value("ticket", "PROJ-123-extra") is not None
+
+
+def test_validate_config_value_api_key():
+    assert validate_config_value("anthropic_api_key", "sk-ant-abc123def456ghij7890") is None
+    assert validate_config_value("anthropic_api_key", "bad-key") is not None
+
+
+def test_load_config_filters_invalid_keys(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('backend = "ollama"\ninvalid_key = "junk"\n')
+    with patch("aicm.config.CONFIG_PATH", config_path):
+        loaded = load_config()
+        assert "backend" in loaded
+        assert "invalid_key" not in loaded

@@ -4,7 +4,7 @@ from importlib.metadata import version as _pkg_version
 
 from aicm.backends import BACKENDS
 from aicm.completions import cmd_completions
-from aicm.config import get_config, load_config, load_project_config, save_config
+from aicm.config import get_config, load_config, load_project_config, save_config, VALID_KEYS, validate_config_value
 from aicm.git import get_diff, get_diff_stat, get_ticket, TICKET_PATTERN
 from aicm.interactive import interactive_commit, load_message, clear_message
 from aicm.prompts import FORMATS, get_prompt
@@ -36,12 +36,6 @@ def _prioritize_code_hunks(lines, limit):
 
 
 def cmd_config(args):
-    # Valid configuration keys
-    VALID_KEYS = {
-        "backend", "model", "ollama_url", "profile", "format", 
-        "anthropic_api_key", "ticket"
-    }
-    
     project = getattr(args, "project", False)
     config = load_project_config() if project else load_config()
     key = args.key
@@ -56,7 +50,6 @@ def cmd_config(args):
             print(f"{k} = {v}")
         return
 
-    # Validate key
     if key not in VALID_KEYS:
         err(f"Invalid config key: {key}. Valid keys: {', '.join(sorted(VALID_KEYS))}")
 
@@ -67,13 +60,9 @@ def cmd_config(args):
             print(f"{key} is not set")
         return
 
-    # Basic value validation
-    if key == "backend" and value not in BACKENDS:
-        err(f"Invalid backend: {value}. Use: {', '.join(BACKENDS)}")
-    elif key == "format" and value not in FORMATS:
-        err(f"Invalid format: {value}. Use: {', '.join(FORMATS)}")
-    elif key == "ollama_url" and not value.startswith(("http://", "https://")):
-        err(f"Invalid URL format: {value}. Must start with http:// or https://")
+    error = validate_config_value(key, value)
+    if error:
+        err(error)
 
     config[key] = value
     save_config(config, project=project)

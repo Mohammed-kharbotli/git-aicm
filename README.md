@@ -181,9 +181,23 @@ git aicm config model codellama
 git aicm config format simple
 ```
 
+### Project-level config
+
+Override settings per-repository with `--project` (or `-p`):
+
+```bash
+# set a project-specific backend
+git aicm config -p backend bedrock
+
+# view project config
+git aicm config -p
+```
+
+This creates a `.aicm.toml` in the repository root. Priority: CLI args > project config > global config > defaults.
+
 ### Manual config file
 
-Create `~/.aicm.toml`:
+Create `~/.aicm.toml` (global) or `<repo-root>/.aicm.toml` (project):
 
 ```toml
 backend = "ollama"
@@ -348,7 +362,7 @@ This helps the AI pick the right commit type (`fix:`, `chore:`, `perf:`, etc.) i
 
 - **Input validation**: Prevents command injection in commit messages (variable expansion, command substitution, control chars blocked)
 - **Prompt injection mitigation**: User context is escaped and delimited to prevent instruction override
-- **Configuration validation**: Only accepts valid configuration keys and values
+- **Configuration validation**: Only accepts valid keys and values — model names, profile names, URLs, API keys, and ticket references are all validated against strict patterns; unknown keys are rejected on load and write; all values capped at 500 characters
 - **API key validation**: Verifies API keys via non-billable `models.list` call
 - **Safe subprocess handling**: Proper error handling and returncode checking for all git commands
 - **Length limits**: Enforced at source — diff 1MB, stat 100KB, context 500 chars

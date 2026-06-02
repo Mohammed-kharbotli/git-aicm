@@ -81,18 +81,27 @@ def interactive_commit(message):
     hook_failed = False
 
     while True:
-        if hook_failed:
-            choice = input("\n[c]ommit / [e]dit / [s]kip hooks / [f]ix & retry later / [r]eject? ").strip().lower()
-        else:
-            choice = input("\n[c]ommit / [e]dit / [r]eject? ").strip().lower()
-        if choice in ("c", "s"):
-            if _try_commit(message, skip_hooks=(choice == "s" and hook_failed)):
+        try:
+            if hook_failed:
+                choice = input("\n[c]ommit / [e]dit / [s]kip hooks / [f]ix & retry later / [r]eject? ").strip().lower()
+            else:
+                choice = input("\n[c]ommit / [e]dit / [r]eject? ").strip().lower()
+        except EOFError:
+            print("\nAborted (input closed).", file=sys.stderr)
+            return
+        if choice == "c":
+            if _try_commit(message):
                 clear_message()
                 return
             hook_failed = True
             continue
+        elif choice == "s" and hook_failed:
+            if _try_commit(message, skip_hooks=True):
+                clear_message()
+                return
+            continue
         elif choice == "f" and hook_failed:
-            path = save_message(message)
+            save_message(message)
             print("Message saved. Fix your code, then run: git aicm")
             return
         elif choice == "e":
@@ -115,6 +124,11 @@ def interactive_commit(message):
         elif choice == "r":
             print("Commit aborted.")
             return
+        else:
+            if hook_failed:
+                print("Invalid choice. Use: c, e, s, f, or r")
+            else:
+                print("Invalid choice. Use: c, e, or r")
 
 
 def edit_message(message):

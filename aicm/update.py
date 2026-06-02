@@ -54,8 +54,8 @@ def check_for_update(current_version):
 
 def _is_newer(latest, current):
     try:
-        l = [int(x) for x in latest.split(".")]
-        c = [int(x) for x in current.split(".")]
-        return l > c
+        latest_parts = [int(x) for x in latest.split(".")]
+        current_parts = [int(x) for x in current.split(".")]
+        return latest_parts > current_parts
     except (ValueError, AttributeError):
         return False

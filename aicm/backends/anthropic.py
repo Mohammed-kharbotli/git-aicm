@@ -1,6 +1,6 @@
 import os
 
-from aicm.utils import err
+from aicm.utils import err, retry
 
 
 def generate(prompt, config):
@@ -13,17 +13,21 @@ def generate(prompt, config):
         err("No API key. Set ANTHROPIC_API_KEY env var or add anthropic_api_key to ~/.aicm.toml")
     try:
         client = anthropic.Anthropic(api_key=api_key)
-        message = []
-        with client.messages.stream(
-            model=config["model"],
-            max_tokens=256,
-            messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            for text in stream.text_stream:
-                print(text, end="", flush=True)
-                message.append(text)
-        print()
-        return "".join(message)
+
+        def _call():
+            message = []
+            with client.messages.stream(
+                model=config["model"],
+                max_tokens=256,
+                messages=[{"role": "user", "content": prompt}],
+            ) as stream:
+                for text in stream.text_stream:
+                    print(text, end="", flush=True)
+                    message.append(text)
+            print()
+            return "".join(message)
+
+        return retry(_call, retries=2, delay=2.0)
     except Exception as e:
         estr = str(e)
         if "authentication" in estr.lower() or "api key" in estr.lower():
@@ -33,22 +37,24 @@ def generate(prompt, config):
 
 def setup(config):
     import re
-    
+
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if api_key:
         print("\nANTHROPIC_API_KEY found in environment.")
-        # Test the key by making a simple API call
         if _validate_api_key(api_key):
             print("API key validated successfully.")
         else:
             err("API key validation failed. Check your ANTHROPIC_API_KEY.")
     else:
-        api_key = input("\nAnthropic API key: ").strip()
+        try:
+            api_key = input("\nAnthropic API key: ").strip()
+        except EOFError:
+            return config
         if api_key:
             # Basic validation - Anthropic keys start with 'sk-ant-'
             if not re.match(r'^sk-ant-[a-zA-Z0-9_-]+$', api_key):
                 err("Invalid API key format. Anthropic keys start with 'sk-ant-'")
-            
+
             # Test the key
             if _validate_api_key(api_key):
                 config["anthropic_api_key"] = api_key
@@ -62,10 +68,10 @@ def setup(config):
 
 def _validate_api_key(api_key):
     import re
-    
+
     if not re.match(r'^sk-ant-[a-zA-Z0-9_-]{20,}$', api_key):
         return False
-        
+
     try:
         import anthropic
         client = anthropic.Anthropic(api_key=api_key)

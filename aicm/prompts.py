@@ -44,16 +44,16 @@ Rules:
 Diff:
 {{diff}}""",
 
-    "simple": f"""Write a git commit message for this diff.
+    "simple": """Write a git commit message for this diff.
 Rules:
 - Output ONLY a single summary line (max 72 chars)
 - ONLY describe changes that are visible in the diff. Do NOT invent or assume changes that are not shown
 - Return ONLY the commit message, no explanations
 
 Diff:
-{{diff}}""",
+{diff}""",
 
-    "simple_detailed": f"""Write a git commit message for this diff.
+    "simple_detailed": """Write a git commit message for this diff.
 Rules:
 - Line 1: main summary (max 72 chars)
 - After the summary, add a blank line then concise bullet points (use - not •)
@@ -65,7 +65,7 @@ Rules:
 - Return ONLY the commit message, no explanations
 
 Diff:
-{{diff}}""",
+{diff}""",
 }
 
 FORMATS = ["conventional", "simple"]

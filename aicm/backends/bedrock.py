@@ -1,5 +1,6 @@
 import json
-from aicm.utils import err
+
+from aicm.utils import err, retry
 
 
 def _stream_response(response, extract_text):
@@ -49,33 +50,41 @@ def generate(prompt, config):
     is_mistral = "mistral" in model
     try:
         if is_anthropic:
-            response = client.invoke_model_with_response_stream(
-                modelId=model,
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 256,
-                    "messages": [{"role": "user", "content": prompt}],
-                }),
-            )
-            return _stream_response(response, lambda c: c["delta"].get("text", "") if c.get("type") == "content_block_delta" else "")
+            def _call_anthropic():
+                response = client.invoke_model_with_response_stream(
+                    modelId=model,
+                    body=json.dumps({
+                        "anthropic_version": "bedrock-2023-05-31",
+                        "max_tokens": 256,
+                        "messages": [{"role": "user", "content": prompt}],
+                    }),
+                )
+                return _stream_response(response, lambda c: c["delta"].get("text", "") if c.get("type") == "content_block_delta" else "")
+            return retry(_call_anthropic, retries=2, delay=2.0)
         elif is_meta:
-            response = client.invoke_model_with_response_stream(
-                modelId=model,
-                body=json.dumps({"prompt": prompt, "max_gen_len": 256}),
-            )
-            return _stream_response(response, lambda c: c.get("generation", ""))
+            def _call_meta():
+                response = client.invoke_model_with_response_stream(
+                    modelId=model,
+                    body=json.dumps({"prompt": prompt, "max_gen_len": 256}),
+                )
+                return _stream_response(response, lambda c: c.get("generation", ""))
+            return retry(_call_meta, retries=2, delay=2.0)
         elif is_mistral:
-            response = client.invoke_model_with_response_stream(
-                modelId=model,
-                body=json.dumps({"prompt": prompt, "max_tokens": 256}),
-            )
-            return _stream_response(response, lambda c: c.get("outputs", [{}])[0].get("text", ""))
+            def _call_mistral():
+                response = client.invoke_model_with_response_stream(
+                    modelId=model,
+                    body=json.dumps({"prompt": prompt, "max_tokens": 256}),
+                )
+                return _stream_response(response, lambda c: c.get("outputs", [{}])[0].get("text", ""))
+            return retry(_call_mistral, retries=2, delay=2.0)
         else:
-            response = client.invoke_model_with_response_stream(
-                modelId=model,
-                body=json.dumps({"inputText": prompt, "textGenerationConfig": {"maxTokenCount": 256}}),
-            )
-            return _stream_response(response, lambda c: c.get("outputText", c.get("completion", "")))
+            def _call_titan():
+                response = client.invoke_model_with_response_stream(
+                    modelId=model,
+                    body=json.dumps({"inputText": prompt, "textGenerationConfig": {"maxTokenCount": 256}}),
+                )
+                return _stream_response(response, lambda c: c.get("outputText", c.get("completion", "")))
+            return retry(_call_titan, retries=2, delay=2.0)
     except Exception as e:
         estr = str(e)
         if "AccessDenied" in estr:
@@ -88,7 +97,10 @@ def generate(prompt, config):
 
 def setup(config):
     from aicm.utils import err
-    profile = input("\nAWS profile (leave empty for default): ").strip() or None
+    try:
+        profile = input("\nAWS profile (leave empty for default): ").strip() or None
+    except EOFError:
+        return config
     if profile:
         config["profile"] = profile
     boto3 = _import_boto3()

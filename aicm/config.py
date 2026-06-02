@@ -54,7 +54,7 @@ def validate_config_value(key, value):
     if key == "profile" and not re.match(r'^[a-zA-Z0-9_-]+$', value):
         return f"Invalid profile name: {value}. Only alphanumeric, hyphens, underscores allowed"
     if key == "anthropic_api_key" and not re.match(r'^sk-ant-[a-zA-Z0-9_-]+$', value):
-        return f"Invalid API key format. Anthropic keys start with 'sk-ant-'"
+        return "Invalid API key format. Anthropic keys start with 'sk-ant-'"
     if key == "ticket" and not _TICKET_RE.fullmatch(value):
         return f"Invalid ticket format: {value}. Expected: PROJ-123"
     return None
@@ -73,7 +73,13 @@ def _load_toml(path):
     try:
         with open(path, "rb") as f:
             data = tomllib.load(f)
-        return {k: v for k, v in data.items() if k in VALID_KEYS}
+        filtered = {}
+        for k, v in data.items():
+            if k not in VALID_KEYS:
+                continue
+            if validate_config_value(k, v) is None:
+                filtered[k] = v
+        return filtered
     except Exception:
         return {}
 

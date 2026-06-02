@@ -2,6 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![CI](https://github.com/Mohammed-kharbotli/git-aicm/actions/workflows/ci.yml/badge.svg)](https://github.com/Mohammed-kharbotli/git-aicm/actions/workflows/ci.yml)
 
 Stop writing commit messages. Let AI read your diff and do the boring part — you just hit `c` to commit. 🚀
 
@@ -59,6 +60,7 @@ curl -fsSL https://raw.githubusercontent.com/Mohammed-kharbotli/git-aicm/main/in
 
 This will:
 - Download and install git-aicm to `~/.local/share/git-aicm`
+- Verify download integrity (checks essential files + SHA256 checksum)
 - Create a symlink in `~/.local/bin/git-aicm`
 - Verify the installation
 - Show next steps
@@ -115,8 +117,14 @@ rm -rf ~/.local/share/git-aicm
 # Remove symlink
 rm ~/.local/bin/git-aicm
 
+# Remove venv
+rm -rf ~/.venvs/git-aicm
+
 # Remove config (optional)
 rm ~/.aicm.toml
+
+# Remove cache (optional)
+rm -rf ~/.cache/git-aicm
 ```
 
 ## Usage
@@ -360,18 +368,20 @@ This helps the AI pick the right commit type (`fix:`, `chore:`, `perf:`, etc.) i
 
 ## Security Features
 
-- **Input validation**: Prevents command injection in commit messages (variable expansion, command substitution, control chars blocked)
-- **Prompt injection mitigation**: User context is escaped and delimited to prevent instruction override
-- **Configuration validation**: Only accepts valid keys and values — model names, profile names, URLs, API keys, and ticket references are all validated against strict patterns; unknown keys are rejected on load and write; all values capped at 500 characters
-- **API key validation**: Verifies API keys via non-billable `models.list` call
+- **Input validation**: Commit messages, config values, and URLs validated against injection patterns
+- **Configuration validation**: Strict patterns for model names, profiles, URLs, API keys; unknown keys rejected; all values capped at 500 chars
 - **Safe subprocess handling**: Proper error handling and returncode checking for all git commands
-- **Length limits**: Enforced at source — diff 1MB, stat 100KB, context 500 chars
-- **SSRF protection**: Ollama URL scheme validated to `http://`/`https://` only
-- **Config file permissions**: Written with `0o600` to protect API keys
-- **TOML escaping**: Backslashes and quotes escaped during config serialization
-- **Ticket validation**: Uses strict full-match to reject malformed ticket references
-- **Bedrock model validation**: Supports region-prefixed model IDs (e.g. `eu.`, `us.`, `ap.`, `me.`, `af.`)
-- **Non-TTY safety**: Prints informative message and skips interactive commit when stdin is not a terminal
+- **SSRF protection**: Ollama URL scheme validated to `http://`/`https://` only; config files written with `0o600` permissions
+- **Retry on transient failures**: All backends retry API calls (2 retries, 2s delay) for network resilience
+- **CI enforcement**: Automated tests + linting on every push/PR prevents regressions
+
+## Update Notifications
+
+git-aicm checks for new versions once per day (cached, non-blocking). If an update is available, a one-line notice is printed after your command completes. To update:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Mohammed-kharbotli/git-aicm/main/install.sh | bash
+```
 
 ## License
 

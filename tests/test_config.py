@@ -77,9 +77,9 @@ def test_save_config_escapes_special_chars(tmp_path):
 def test_save_config_escapes_backslashes(tmp_path):
     config_path = tmp_path / "config.toml"
     with patch("aicm.config.CONFIG_PATH", config_path):
-        save_config({"model": "path\\to\\model"})
+        save_config({"ollama_url": 'http://host/path?a="1"'})
         loaded = load_config()
-        assert loaded["model"] == "path\\to\\model"
+        assert loaded["ollama_url"] == 'http://host/path?a="1"'
 
 
 def test_validate_config_value_invalid_key():

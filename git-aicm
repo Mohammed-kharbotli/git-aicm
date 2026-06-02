@@ -33,11 +33,13 @@ if [[ ! -f "$VENV/bin/python3" ]] || ! "$VENV/bin/python3" -c "import aicm" &>/d
   "$VENV/bin/pip" install --quiet -e "${SCRIPT_DIR}"
 fi
 
-# Auto-install backend dependencies if missing
+# Auto-install backend dependencies if missing (skip for non-generate commands)
 missing=$("$VENV/bin/python3" -c "
 import sys
-from aicm.config import get_config, BACKEND_DEPS
+from aicm.config import DEFAULTS, load_config, BACKEND_DEPS
 args = sys.argv[1:]
+if args and args[0] in ('setup', 'config', 'completions', 'reinstall', '--help', '--version'):
+    sys.exit(0)
 backend = None
 for i, a in enumerate(args):
     if a == '--backend' and i + 1 < len(args):
@@ -45,7 +47,7 @@ for i, a in enumerate(args):
     elif a.startswith('--backend='):
         backend = a.split('=', 1)[1]
 if not backend:
-    backend = get_config().get('backend', '')
+    backend = load_config().get('backend', DEFAULTS.get('backend', ''))
 dep = BACKEND_DEPS.get(backend)
 if dep:
     try:

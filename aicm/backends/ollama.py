@@ -1,8 +1,8 @@
 import json
-import urllib.request
 import urllib.error
+import urllib.request
 
-from aicm.utils import err
+from aicm.utils import err, retry
 
 
 def _check_server(url):
@@ -30,24 +30,26 @@ def generate(prompt, config):
         headers={"Content-Type": "application/json"},
     )
     try:
-        message = []
-        with urllib.request.urlopen(req, timeout=120) as resp:  # Reduced from 300s
-            for line in resp:
-                try:
-                    chunk = json.loads(line)
-                except json.JSONDecodeError:
-                    # Skip malformed JSON lines
-                    continue
-                    
-                if "response" not in chunk or "done" not in chunk:
-                    continue
-                text = chunk["response"]
-                print(text, end="", flush=True)
-                message.append(text)
-                if chunk["done"]:
-                    break
-        print()
-        return "".join(message)
+        def _call():
+            message = []
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                for line in resp:
+                    try:
+                        chunk = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if "response" not in chunk or "done" not in chunk:
+                        continue
+                    text = chunk["response"]
+                    print(text, end="", flush=True)
+                    message.append(text)
+                    if chunk["done"]:
+                        break
+            print()
+            return "".join(message)
+
+        return retry(_call, retries=2, delay=2.0,
+                     on_retry=lambda n, e: print(f"\nOllama request failed, retrying ({n}/2)...", flush=True))
     except TimeoutError:
         err("Timed out waiting for Ollama. Try stopping other models: ollama stop <model>")
     except urllib.error.HTTPError as e:
@@ -60,10 +62,13 @@ def generate(prompt, config):
 
 def setup(config):
     import json
-    import subprocess
     import re
+    import subprocess
 
-    url = input(f"\nOllama URL [{config.get('ollama_url', 'http://localhost:11434')}]: ").strip()
+    try:
+        url = input(f"\nOllama URL [{config.get('ollama_url', 'http://localhost:11434')}]: ").strip()
+    except EOFError:
+        return config
     config["ollama_url"] = url or config.get("ollama_url", "http://localhost:11434")
     url = config["ollama_url"]
 
@@ -73,7 +78,7 @@ def setup(config):
     # Validate model name to prevent command injection
     if not re.match(r'^[a-zA-Z0-9._:-]+$', model):
         err(f"Invalid model name: {model}")
-    
+
     try:
         with urllib.request.urlopen(f"{url}/api/tags", timeout=5) as resp:
             data = json.loads(resp.read())

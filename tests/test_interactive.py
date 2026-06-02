@@ -97,3 +97,35 @@ def test_edit_message(tmp_path):
     with patch.dict(os.environ, {"EDITOR": "true"}):
         result = edit_message("original message")
         assert isinstance(result, str)
+
+
+def test_skip_ignored_before_failure():
+    # Pressing 's' before a failure should be ignored, then 'c' commits normally
+    inputs = iter(["s", "c"])
+    with patch("builtins.input", side_effect=inputs), \
+         patch("aicm.interactive.subprocess.run") as mock_run, \
+         patch("aicm.interactive.clear_message"), \
+         patch("aicm.interactive.sys") as mock_sys:
+        mock_sys.stdin.isatty.return_value = True
+        interactive_commit("feat: test")
+        mock_run.assert_called_once_with(["git", "commit", "-m", "feat: test"], check=True)
+
+
+def test_fix_ignored_before_failure():
+    # Pressing 'f' before a failure should be ignored, then 'r' rejects
+    inputs = iter(["f", "r"])
+    with patch("builtins.input", side_effect=inputs), \
+         patch("aicm.interactive.subprocess.run") as mock_run, \
+         patch("aicm.interactive.sys") as mock_sys:
+        mock_sys.stdin.isatty.return_value = True
+        interactive_commit("feat: test")
+        mock_run.assert_not_called()
+
+
+def test_invalid_message_rejected():
+    with patch("aicm.interactive.sys") as mock_sys:
+        mock_sys.stdin.isatty.return_value = True
+        mock_sys.stderr = MagicMock()
+        # ${HOME} triggers validation failure
+        interactive_commit("fix: ${HOME}")
+        # Should return without prompting

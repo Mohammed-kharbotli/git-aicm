@@ -1,9 +1,3 @@
-# To add a new backend:
-# 1. Create a file in this directory (e.g. openai.py)
-# 2. Define a generate(prompt, config) -> str function
-# 3. Optionally define a setup(config) -> config function for the setup wizard
-# 4. That's it — it gets auto-registered
-
 import importlib
 import pkgutil
 
@@ -17,11 +11,11 @@ ALLOWED_BACKENDS = {"bedrock", "ollama", "anthropic"}
 def _validate_config(config, backend_name):
     if not isinstance(config, dict):
         return False
-    
+
     # Common required fields
     if "model" not in config or not config["model"]:
         return False
-    
+
     # Backend-specific validation
     if backend_name == "ollama":
         return bool(config.get("ollama_url"))
@@ -30,7 +24,7 @@ def _validate_config(config, backend_name):
                     "ANTHROPIC_API_KEY" in __import__("os").environ)
     elif backend_name == "bedrock":
         return True  # AWS credentials validated elsewhere
-    
+
     return True
 
 

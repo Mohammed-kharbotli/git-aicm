@@ -13,7 +13,12 @@ def prompt_choice(label, options, default=None):
         print(f"  {i}) {opt}{marker}")
     while True:
         suffix = f" [{default}]" if default else ""
-        value = input(f"Choose{suffix}: ").strip()
+        try:
+            value = input(f"Choose{suffix}: ").strip()
+        except EOFError:
+            if default:
+                return default
+            raise
         if not value and default:
             return default
         if value.isdigit() and 1 <= int(value) <= len(options):
@@ -26,7 +31,10 @@ def prompt_choice(label, options, default=None):
 def prompt_input(label, default=None):
     suffix = f" [{default}]" if default else ""
     while True:
-        value = input(f"{label}{suffix}: ").strip()
+        try:
+            value = input(f"{label}{suffix}: ").strip()
+        except EOFError:
+            return default
         result = value or default
         if result and len(result) > 500:
             print("Input too long. Please keep it under 500 characters.")
@@ -40,7 +48,7 @@ def cmd_setup(args):
     backends = list(BACKENDS.keys())
     backend = prompt_choice("Backend", backends, default="ollama")
 
-    model = prompt_input(f"\nModel", MODEL_DEFAULTS.get(backend, ""))
+    model = prompt_input("\nModel", MODEL_DEFAULTS.get(backend, ""))
     config = {"backend": backend, "model": model}
 
     fmt = prompt_choice("Commit format", FORMATS, default="conventional")
@@ -88,7 +96,10 @@ def install_completions():
     content = rc.read_text() if rc.exists() else ""
     if line in content:
         return
-    choice = input(f"\nEnable tab completions in {rc.name}? [Y/n] ").strip().lower()
+    try:
+        choice = input(f"\nEnable tab completions in {rc.name}? [Y/n] ").strip().lower()
+    except EOFError:
+        return
     if choice in ("", "y", "yes"):
         backup_path = rc.with_suffix(f"{rc.suffix}.backup.{int(__import__('time').time())}")
         try:
@@ -96,7 +107,7 @@ def install_completions():
                 import shutil
                 shutil.copy2(rc, backup_path)
                 print(f"Backup created: {backup_path}")
-            
+
             with open(rc, "a") as f:
                 if content and not content.endswith("\n"):
                     f.write("\n")

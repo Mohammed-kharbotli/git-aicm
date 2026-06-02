@@ -93,9 +93,11 @@ def test_saved_message_auto_detect(capsys):
     with patch("aicm.load_message", return_value="feat: saved msg"), \
          patch("aicm.sys.stdin.isatty", return_value=True), \
          patch("builtins.input", return_value="c"), \
-         patch("aicm.interactive_commit") as mock_ic:
+         patch("aicm._try_commit", return_value=True) as mock_commit, \
+         patch("aicm.clear_message") as mock_clear:
         cmd_generate(args)
-        mock_ic.assert_called_once_with("feat: saved msg")
+        mock_commit.assert_called_once_with("feat: saved msg")
+        mock_clear.assert_called_once()
 
 
 def test_saved_message_discard(capsys):

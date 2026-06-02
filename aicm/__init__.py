@@ -4,9 +4,9 @@ from importlib.metadata import version as _pkg_version
 
 from aicm.backends import BACKENDS
 from aicm.completions import cmd_completions
-from aicm.config import get_config, load_config, load_project_config, save_config, VALID_KEYS, validate_config_value
-from aicm.git import get_diff, get_diff_stat, get_ticket, TICKET_PATTERN
-from aicm.interactive import interactive_commit, load_message, clear_message
+from aicm.config import VALID_KEYS, get_config, load_config, load_project_config, save_config, validate_config_value
+from aicm.git import TICKET_PATTERN, get_diff, get_diff_stat, get_ticket
+from aicm.interactive import _try_commit, clear_message, interactive_commit, load_message
 from aicm.prompts import FORMATS, get_prompt
 from aicm.setup import cmd_setup
 from aicm.utils import err
@@ -74,8 +74,15 @@ def cmd_generate(args):
     saved = load_message()
     if saved and sys.stdin.isatty():
         print(f"Found saved message:\n\n{saved}\n")
-        choice = input("[c]ommit / [e]dit / [d]iscard and regenerate? ").strip().lower()
-        if choice in ("c", "e"):
+        try:
+            choice = input("[c]ommit / [e]dit / [d]iscard and regenerate? ").strip().lower()
+        except EOFError:
+            return
+        if choice == "c":
+            if _try_commit(saved):
+                clear_message()
+            return
+        elif choice == "e":
             interactive_commit(saved)
             return
         elif choice == "d":
@@ -106,6 +113,8 @@ def cmd_generate(args):
         diff = _prioritize_code_hunks(lines, MAX_DIFF_LINES)
 
     context = config.get("context")
+    if context and len(context) > 500:
+        err("Context is too long (max 500 characters).")
     detailed = config.get("detailed", False)
     message = BACKENDS[config["backend"]](get_prompt(fmt, diff, stat=stat, context=context, detailed=detailed), config)
     if not message:
@@ -114,7 +123,7 @@ def cmd_generate(args):
     ticket = config.get("ticket")
     if ticket and not TICKET_PATTERN.fullmatch(ticket):
         err(f"Invalid ticket format: {ticket}. Expected format: PROJ-123")
-    
+
     # Get ticket from branch if not provided via CLI
     if not ticket:
         ticket = get_ticket()
@@ -122,7 +131,7 @@ def cmd_generate(args):
         if ticket and not TICKET_PATTERN.fullmatch(ticket):
             print(f"Warning: Invalid ticket format from branch: {ticket}. Skipping.", file=sys.stderr)
             ticket = None
-    
+
     if ticket:
         message = f"{message.rstrip()}\n\nRefs: {ticket}"
         print(f"\nRefs: {ticket}")
@@ -215,5 +224,5 @@ def main():
         latest = check_for_update(__version__)
         if latest:
             print(f"\nUpdate available: {__version__} → {latest}. Run: curl -fsSL https://raw.githubusercontent.com/Mohammed-kharbotli/git-aicm/main/install.sh | bash", file=sys.stderr)
-    except Exception:
+    except (Exception, KeyboardInterrupt):
         pass

@@ -51,17 +51,7 @@ jobs:
             if [ -n "$CHANGES" ]; then printf "### Changed\n%s\n\n" "$CHANGES"; fi
           } > /tmp/entry.md
           # Insert entry after [Unreleased] line, removing old unreleased content
-          python3 << 'EOF'
-import re
-entry = open("/tmp/entry.md").read()
-changelog = open("CHANGELOG.md").read()
-changelog = re.sub(
-    r"(## \[Unreleased\]).*?(\n## \[)",
-    r"\1\n\n" + entry + "\2",
-    changelog, count=1, flags=re.DOTALL
-)
-open("CHANGELOG.md", "w").write(changelog)
-EOF
+          python3 -c "import re; entry=open('/tmp/entry.md').read(); cl=open('CHANGELOG.md').read(); cl=re.sub(r'(## \[Unreleased\]).*?(\n## \[)', r'\1\n\n'+entry+'\2', cl, count=1, flags=re.DOTALL); open('CHANGELOG.md','w').write(cl)"
 
       - name: Commit changes
         run: |

@@ -1,8 +1,22 @@
 # Changelog
 
 ## [Unreleased]
+
 ## [0.3.1] - 2026-06-02
 
+### Added
+- GitHub Actions CI (tests + linting on push/PR)
+- Release workflow with automatic CHANGELOG generation and SHA256 checksums
+- Retry logic for all backends (2 retries, 2s delay) for network resilience
+- Ruff linter configuration in pyproject.toml
+- Project-level config and validation improvements
+- Update check functionality (cached, non-blocking GitHub check)
+
+### Fixed
+- Double-prompt when committing a saved message
+
+### Changed
+- Remove old virtual environment before installing (cleaner upgrades)
 
 ## [0.2.0] - 2026-05-15
 
@@ -29,7 +43,6 @@
 - Default model to `qwen2.5-coder:7b`
 - Ollama timeout reduced from 300s to 120s
 - Consolidated and simplified code logic
-- Removed unnecessary docstrings
 
 ## [0.1.0] - 2026-05-02
 

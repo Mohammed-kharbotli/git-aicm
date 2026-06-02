@@ -33,48 +33,34 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           DATE=$(date -u +%Y-%m-%d)
-          # Get previous tag
-          PREV_TAG=$(git tag --sort=-creatordate | grep -v "$GITHUB_REF_NAME" | head -1)
-          if [ -z "$PREV_TAG" ]; then
-            RANGE="HEAD"
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${GITHUB_REF_NAME}$" | head -1)
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${GITHUB_REF_NAME}"
           else
-            RANGE="${PREV_TAG}..HEAD"
+            RANGE="${GITHUB_REF_NAME}"
           fi
-          # Generate categorized changelog from commits
+          FEATS=$(git log "$RANGE" --pretty=format:"%s" --no-merges | grep -iE "^feat" | sed 's/^[^:]*: /- /' || true)
+          FIXES=$(git log "$RANGE" --pretty=format:"%s" --no-merges | grep -iE "^fix" | sed 's/^[^:]*: /- /' || true)
+          CHANGES=$(git log "$RANGE" --pretty=format:"%s" --no-merges | grep -iE "^(refactor|chore|perf)" | sed 's/^[^:]*: /- /' || true)
           {
             echo "## [$VERSION] - $DATE"
             echo ""
-            # Group by conventional commit type
-            FEATS=$(git log "$RANGE" --pretty=format:"%s" | grep -i "^feat" | sed 's/^[^:]*: /- /' || true)
-            FIXES=$(git log "$RANGE" --pretty=format:"%s" | grep -i "^fix" | sed 's/^[^:]*: /- /' || true)
-            REFACTORS=$(git log "$RANGE" --pretty=format:"%s" | grep -i "^refactor\|^chore\|^perf" | sed 's/^[^:]*: /- /' || true)
-            DOCS=$(git log "$RANGE" --pretty=format:"%s" | grep -i "^docs" | sed 's/^[^:]*: /- /' || true)
-            if [ -n "$FEATS" ]; then
-              echo "### Added"
-              echo "$FEATS"
-              echo ""
-            fi
-            if [ -n "$FIXES" ]; then
-              echo "### Fixed"
-              echo "$FIXES"
-              echo ""
-            fi
-            if [ -n "$REFACTORS" ]; then
-              echo "### Changed"
-              echo "$REFACTORS"
-              echo ""
-            fi
-            if [ -n "$DOCS" ]; then
-              echo "### Docs"
-              echo "$DOCS"
-              echo ""
-            fi
-          } > /tmp/new_entry.md
-          # Insert after the header lines in CHANGELOG.md
-          sed -i '/^## \[Unreleased\]/,/^## \[/{/^## \[Unreleased\]/!{/^## \[/!d}}' CHANGELOG.md
-          sed -i "s/^## \[Unreleased\].*/## [Unreleased]\n/" CHANGELOG.md
-          # Insert new entry after [Unreleased] section
-          sed -i "/^## \[Unreleased\]/r /tmp/new_entry.md" CHANGELOG.md
+            if [ -n "$FEATS" ]; then printf "### Added\n%s\n\n" "$FEATS"; fi
+            if [ -n "$FIXES" ]; then printf "### Fixed\n%s\n\n" "$FIXES"; fi
+            if [ -n "$CHANGES" ]; then printf "### Changed\n%s\n\n" "$CHANGES"; fi
+          } > /tmp/entry.md
+          # Insert entry after [Unreleased] line, removing old unreleased content
+          python3 << 'EOF'
+import re
+entry = open("/tmp/entry.md").read()
+changelog = open("CHANGELOG.md").read()
+changelog = re.sub(
+    r"(## \[Unreleased\]).*?(\n## \[)",
+    r"\1\n\n" + entry + "\2",
+    changelog, count=1, flags=re.DOTALL
+)
+open("CHANGELOG.md", "w").write(changelog)
+EOF
 
       - name: Commit changes
         run: |

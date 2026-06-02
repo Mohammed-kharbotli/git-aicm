@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "git-aicm"
-version = "0.3.0"
+version = "0.3.1"
 description = "Generates git commit messages from your diff using an LLM"
 requires-python = ">=3.9"
 license = {text = "MIT"}

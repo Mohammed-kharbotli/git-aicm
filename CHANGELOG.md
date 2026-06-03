@@ -2,7 +2,18 @@
 
 ## [Unreleased]
 
-## [0.3.1] - 2026-06-02
+## [0.4.0] - 2026-06-03
+
+### Fixed
+- add update command to git-aicm
+- use python one-liner for changelog generation
+- improve changelog generation and fix broken entries
+
+### Changed
+- replace `rmdir` with `rm -rf` for more thorough cleanup
+- release 0.3.1
+
+0.3.1] - 2026-06-02
 
 ### Added
 - GitHub Actions CI (tests + linting on push/PR)

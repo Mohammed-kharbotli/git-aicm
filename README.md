@@ -375,13 +375,15 @@ This helps the AI pick the right commit type (`fix:`, `chore:`, `perf:`, etc.) i
 - **Retry on transient failures**: All backends retry API calls (2 retries, 2s delay) for network resilience
 - **CI enforcement**: Automated tests + linting on every push/PR prevents regressions
 
-## Update Notifications
+## Updating
 
-git-aicm checks for new versions once per day (cached, non-blocking). If an update is available, a one-line notice is printed after your command completes. To update:
+Update to the latest version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Mohammed-kharbotli/git-aicm/main/install.sh | bash
+git aicm update
 ```
+
+git-aicm checks for new versions once per day (cached, non-blocking). If an update is available, a one-line notice is printed after your command completes.
 
 ## License
 

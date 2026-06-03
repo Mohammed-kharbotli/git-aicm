@@ -26,6 +26,11 @@ if [[ "$1" == "reinstall" ]]; then
   exit 0
 fi
 
+# Update: re-run the installer
+if [[ "$1" == "update" ]]; then
+  exec bash -c "$(curl -fsSL https://raw.githubusercontent.com/Mohammed-kharbotli/git-aicm/main/install.sh)"
+fi
+
 # Bootstrap venv + install if needed
 if [[ ! -f "$VENV/bin/python3" ]] || ! "$VENV/bin/python3" -c "import aicm" &>/dev/null; then
   echo "Setting up git-aicm..."
@@ -38,7 +43,7 @@ missing=$("$VENV/bin/python3" -c "
 import sys
 from aicm.config import DEFAULTS, load_config, BACKEND_DEPS
 args = sys.argv[1:]
-if args and args[0] in ('setup', 'config', 'completions', 'reinstall', '--help', '--version'):
+if args and args[0] in ('setup', 'config', 'completions', 'reinstall', 'update', '--help', '--version'):
     sys.exit(0)
 backend = None
 for i, a in enumerate(args):

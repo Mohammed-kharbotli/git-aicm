@@ -161,6 +161,7 @@ def main():
     sub = parser.add_subparsers(dest="command", title="Commands", metavar="COMMAND")
 
     sub.add_parser("setup", help="Interactive setup wizard")
+    sub.add_parser("update", help="Update git-aicm to the latest version")
 
     cfg = sub.add_parser("config", help="View or set config values")
     cfg.add_argument("key", nargs="?", help="Config key to get or set")
@@ -195,7 +196,9 @@ def main():
     args = parser.parse_args()
 
     try:
-        if args.command == "setup":
+        if args.command == "update":
+            err("Update must be run via the git-aicm wrapper. Run: git aicm update")
+        elif args.command == "setup":
             cmd_setup(args)
         elif args.command == "config":
             cmd_config(args)
@@ -223,6 +226,6 @@ def main():
         from aicm.update import check_for_update
         latest = check_for_update(__version__)
         if latest:
-            print(f"\nUpdate available: {__version__} → {latest}. Run: curl -fsSL https://raw.githubusercontent.com/Mohammed-kharbotli/git-aicm/main/install.sh | bash", file=sys.stderr)
+            print(f"\nUpdate available: {__version__} → {latest}. Run: git aicm update", file=sys.stderr)
     except (Exception, KeyboardInterrupt):
         pass

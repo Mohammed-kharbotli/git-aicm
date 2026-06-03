@@ -10,7 +10,7 @@ def bash_completion():
     COMPREPLY=()
     cur="${{COMP_WORDS[COMP_CWORD]}}"
     prev="${{COMP_WORDS[COMP_CWORD-1]}}"
-    commands="setup config generate completions reinstall"
+    commands="setup config generate completions reinstall update"
     opts="--backend --model --ollama-url --profile --format --ticket --context --detailed --dry-run --version --help"
 
     case "$prev" in
@@ -51,6 +51,7 @@ _git-aicm() {{
         'config:View or set config values'
         'generate:Generate a commit message'
         'reinstall:Reset venv and reinstall'
+        'update:Update to the latest version'
     )
 
     _arguments -C \\

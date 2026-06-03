@@ -61,7 +61,7 @@ if [[ -f "$TEMP_DIR/repo.zip" ]]; then
     command -v unzip >/dev/null 2>&1 || error "unzip is required to extract the archive"
     unzip -q "$TEMP_DIR/repo.zip" -d "$TEMP_DIR"
     mv "$TEMP_DIR"/git-aicm-main/* "$TEMP_DIR/"
-    rmdir "$TEMP_DIR/git-aicm-main"
+    rm -rf "$TEMP_DIR/git-aicm-main"
     rm -f "$TEMP_DIR/repo.zip"
 fi
 

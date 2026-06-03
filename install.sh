@@ -41,28 +41,75 @@ success "Dependencies OK"
 
 TEMP_DIR=$(mktemp -d)
 
+# Resolve latest release tag
+LATEST_TAG=""
 if command -v curl >/dev/null 2>&1; then
-    info "Downloading with curl..."
-    mkdir -p "$TEMP_DIR"
-    curl -fsSL "$REPO_URL/archive/refs/heads/main.zip" -o "$TEMP_DIR/repo.zip"
+    LATEST_TAG=$(curl -fsSo /dev/null -w '%{redirect_url}' "$REPO_URL/releases/latest" 2>/dev/null | grep -o '[^/]*$' || true)
 elif command -v wget >/dev/null 2>&1; then
-    info "Downloading with wget..."
-    mkdir -p "$TEMP_DIR"
-    wget -q "$REPO_URL/archive/refs/heads/main.zip" -O "$TEMP_DIR/repo.zip"
-elif command -v git >/dev/null 2>&1; then
-    info "Cloning repository..."
-    git clone --depth 1 "$REPO_URL" "$TEMP_DIR"
-else
-    error "Need curl, wget, or git to download"
+    LATEST_TAG=$(wget --spider -S "$REPO_URL/releases/latest" 2>&1 | grep -i 'Location:' | grep -o '[^/]*$' | tr -d '\r' || true)
 fi
 
-# Extract if we downloaded a zip
-if [[ -f "$TEMP_DIR/repo.zip" ]]; then
-    command -v unzip >/dev/null 2>&1 || error "unzip is required to extract the archive"
-    unzip -q "$TEMP_DIR/repo.zip" -d "$TEMP_DIR"
-    mv "$TEMP_DIR"/git-aicm-main/* "$TEMP_DIR/"
-    rm -rf "$TEMP_DIR/git-aicm-main"
-    rm -f "$TEMP_DIR/repo.zip"
+if [[ -n "$LATEST_TAG" ]]; then
+    TARBALL_URL="$REPO_URL/releases/download/$LATEST_TAG/git-aicm-$LATEST_TAG.tar.gz"
+    info "Downloading $LATEST_TAG..."
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$TARBALL_URL" -o "$TEMP_DIR/release.tar.gz" 2>/dev/null
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q "$TARBALL_URL" -O "$TEMP_DIR/release.tar.gz" 2>/dev/null
+    fi
+fi
+
+# Fall back to main branch if release download failed
+if [[ ! -s "$TEMP_DIR/release.tar.gz" ]]; then
+    warn "Could not download release, falling back to main branch"
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "$REPO_URL/archive/refs/heads/main.tar.gz" -o "$TEMP_DIR/release.tar.gz"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q "$REPO_URL/archive/refs/heads/main.tar.gz" -O "$TEMP_DIR/release.tar.gz"
+    elif command -v git >/dev/null 2>&1; then
+        info "Cloning repository..."
+        git clone --depth 1 "$REPO_URL" "$TEMP_DIR/src"
+    else
+        error "Need curl, wget, or git to download"
+    fi
+fi
+
+# Verify and extract tarball
+if [[ -s "$TEMP_DIR/release.tar.gz" ]]; then
+    # SHA256 verification (only for release downloads)
+    if [[ -n "$LATEST_TAG" ]]; then
+        checksum_url="$REPO_URL/releases/download/$LATEST_TAG/SHA256SUMS"
+        checksum_file="$TEMP_DIR/SHA256SUMS"
+        if command -v curl >/dev/null 2>&1; then
+            curl -fsSL "$checksum_url" -o "$checksum_file" 2>/dev/null || true
+        elif command -v wget >/dev/null 2>&1; then
+            wget -q "$checksum_url" -O "$checksum_file" 2>/dev/null || true
+        fi
+        if [[ -s "$checksum_file" ]]; then
+            info "Verifying SHA256 checksum..."
+            # Rename to match the filename in SHA256SUMS
+            mv "$TEMP_DIR/release.tar.gz" "$TEMP_DIR/git-aicm-$LATEST_TAG.tar.gz"
+            if command -v sha256sum >/dev/null 2>&1; then
+                (cd "$TEMP_DIR" && sha256sum --check SHA256SUMS --quiet 2>/dev/null) && success "Checksum verified" || warn "Checksum verification failed"
+            elif command -v shasum >/dev/null 2>&1; then
+                (cd "$TEMP_DIR" && shasum -a 256 --check SHA256SUMS --quiet 2>/dev/null) && success "Checksum verified" || warn "Checksum verification failed"
+            fi
+            mv "$TEMP_DIR/git-aicm-$LATEST_TAG.tar.gz" "$TEMP_DIR/release.tar.gz"
+            rm -f "$checksum_file"
+        fi
+    fi
+    tar xzf "$TEMP_DIR/release.tar.gz" -C "$TEMP_DIR"
+    rm -f "$TEMP_DIR/release.tar.gz"
+    # Move files from subdirectory if present (main branch archive)
+    subdir=$(find "$TEMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
+    if [[ -n "$subdir" && -f "$subdir/git-aicm" ]]; then
+        mv "$subdir"/* "$TEMP_DIR/" 2>/dev/null || true
+        mv "$subdir"/.* "$TEMP_DIR/" 2>/dev/null || true
+        rm -rf "$subdir"
+    fi
+elif [[ -d "$TEMP_DIR/src" ]]; then
+    mv "$TEMP_DIR"/src/* "$TEMP_DIR/"
+    rm -rf "$TEMP_DIR/src"
 fi
 
 # --- Verify download ---
@@ -71,24 +118,6 @@ for f in git-aicm pyproject.toml LICENSE; do
     [[ -s "$TEMP_DIR/$f" ]] || error "Download incomplete: $f missing or empty"
 done
 [[ -d "$TEMP_DIR/aicm" && -f "$TEMP_DIR/aicm/__init__.py" ]] || error "Download incomplete: aicm/ package missing"
-
-# Try SHA256 verification from latest release (skip if unavailable)
-checksum_url="$REPO_URL/releases/latest/download/SHA256SUMS"
-checksum_file="$TEMP_DIR/SHA256SUMS"
-if command -v curl >/dev/null 2>&1; then
-    curl -fsSL "$checksum_url" -o "$checksum_file" 2>/dev/null || true
-elif command -v wget >/dev/null 2>&1; then
-    wget -q "$checksum_url" -O "$checksum_file" 2>/dev/null || true
-fi
-if [[ -s "$checksum_file" ]]; then
-    info "Verifying SHA256 checksum..."
-    if command -v sha256sum >/dev/null 2>&1; then
-        (cd "$TEMP_DIR" && sha256sum --check SHA256SUMS --quiet 2>/dev/null) && success "Checksum verified" || warn "Checksum mismatch (file layout may differ from release)"
-    elif command -v shasum >/dev/null 2>&1; then
-        (cd "$TEMP_DIR" && shasum -a 256 --check SHA256SUMS --quiet 2>/dev/null) && success "Checksum verified" || warn "Checksum mismatch (file layout may differ from release)"
-    fi
-    rm -f "$checksum_file"
-fi
 
 # --- Install ---
 

@@ -1,6 +1,6 @@
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from aicm.config import DEFAULTS, MODEL_DEFAULTS, VALID_KEYS, get_config, load_config, save_config, validate_config_value
 
@@ -145,3 +145,60 @@ def test_load_config_filters_invalid_keys(tmp_path):
         loaded = load_config()
         assert "backend" in loaded
         assert "invalid_key" not in loaded
+
+
+def test_cmd_config_defaults_to_project(tmp_path, capsys):
+    from aicm import cmd_config
+    args = MagicMock()
+    args.global_config = False
+    args.key = None
+    args.value = None
+    args.unset = False
+    with patch("aicm.load_project_config", return_value={"backend": "bedrock"}) as mock_proj, \
+         patch("aicm.load_config") as mock_global:
+        cmd_config(args)
+        mock_proj.assert_called_once()
+        mock_global.assert_not_called()
+    assert "bedrock" in capsys.readouterr().out
+
+
+def test_cmd_config_global_flag(tmp_path, capsys):
+    from aicm import cmd_config
+    args = MagicMock()
+    args.global_config = True
+    args.key = None
+    args.value = None
+    args.unset = False
+    with patch("aicm.load_project_config") as mock_proj, \
+         patch("aicm.load_config", return_value={"backend": "ollama"}) as mock_global:
+        cmd_config(args)
+        mock_global.assert_called_once()
+        mock_proj.assert_not_called()
+    assert "ollama" in capsys.readouterr().out
+
+
+def test_cmd_config_unset(tmp_path, capsys):
+    from aicm import cmd_config
+    args = MagicMock()
+    args.global_config = False
+    args.key = "ticket"
+    args.value = None
+    args.unset = True
+    with patch("aicm.load_project_config", return_value={"backend": "ollama", "ticket": "PROJ-42"}), \
+         patch("aicm.save_config") as mock_save:
+        cmd_config(args)
+        saved = mock_save.call_args[0][0]
+        assert "ticket" not in saved
+    assert "unset" in capsys.readouterr().out
+
+
+def test_cmd_config_unset_missing_key(tmp_path, capsys):
+    from aicm import cmd_config
+    args = MagicMock()
+    args.global_config = True
+    args.key = "ticket"
+    args.value = None
+    args.unset = True
+    with patch("aicm.load_config", return_value={"backend": "ollama"}):
+        cmd_config(args)
+    assert "not set" in capsys.readouterr().out

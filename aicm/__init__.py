@@ -36,14 +36,15 @@ def _prioritize_code_hunks(lines, limit):
 
 
 def cmd_config(args):
-    project = getattr(args, "project", False)
-    config = load_project_config() if project else load_config()
+    use_global = getattr(args, "global_config", False)
+    config = load_config() if use_global else load_project_config()
     key = args.key
     value = args.value
+    unset = getattr(args, "unset", False)
 
     if not key:
         if not config:
-            label = "project" if project else "global"
+            label = "global" if use_global else "project"
             print(f"No {label} config file. Run 'git aicm config <key> <value>'.")
             return
         for k, v in config.items():
@@ -52,6 +53,17 @@ def cmd_config(args):
 
     if key not in VALID_KEYS:
         err(f"Invalid config key: {key}. Valid keys: {', '.join(sorted(VALID_KEYS))}")
+
+    if unset:
+        if key in config:
+            del config[key]
+            save_config(config, project=not use_global)
+            label = "global" if use_global else "project"
+            print(f"{key} unset ({label})")
+        else:
+            label = "global" if use_global else "project"
+            print(f"{key} is not set ({label})")
+        return
 
     if value is None:
         if key in config:
@@ -65,8 +77,8 @@ def cmd_config(args):
         err(error)
 
     config[key] = value
-    save_config(config, project=project)
-    label = "project" if project else "global"
+    save_config(config, project=not use_global)
+    label = "global" if use_global else "project"
     print(f"{key} = {value} ({label})")
 
 
@@ -90,7 +102,7 @@ def cmd_generate(args):
         else:
             return
 
-    cli_overrides = {k: v for k, v in vars(args).items() if k not in ("command", "dry_run", "detailed")}
+    cli_overrides = {k: v for k, v in vars(args).items() if k not in ("command", "dry_run", "detailed", "ticket")}
     config = get_config(cli_overrides)
     config["detailed"] = getattr(args, "detailed", False)
 
@@ -120,16 +132,21 @@ def cmd_generate(args):
     if not message:
         err("Backend returned an empty message. Try again or use a different model.")
 
-    ticket = config.get("ticket")
+    # Ticket priority: --ticket flag > branch name > config file
+    ticket = getattr(args, "ticket", None)
     if ticket and not TICKET_PATTERN.fullmatch(ticket):
         err(f"Invalid ticket format: {ticket}. Expected format: PROJ-123")
 
-    # Get ticket from branch if not provided via CLI
     if not ticket:
         ticket = get_ticket()
-        # Validate branch-extracted ticket as well
         if ticket and not TICKET_PATTERN.fullmatch(ticket):
             print(f"Warning: Invalid ticket format from branch: {ticket}. Skipping.", file=sys.stderr)
+            ticket = None
+
+    if not ticket:
+        ticket = config.get("ticket")
+        if ticket and not TICKET_PATTERN.fullmatch(ticket):
+            print(f"Warning: Invalid ticket format in config: {ticket}. Skipping.", file=sys.stderr)
             ticket = None
 
     if ticket:
@@ -166,7 +183,8 @@ def main():
     cfg = sub.add_parser("config", help="View or set config values")
     cfg.add_argument("key", nargs="?", help="Config key to get or set")
     cfg.add_argument("value", nargs="?", help="Value to set")
-    cfg.add_argument("--project", "-p", action="store_true", help="Use project config instead of global")
+    cfg.add_argument("--global", "-g", action="store_true", dest="global_config", help="Use global config instead of project")
+    cfg.add_argument("--unset", action="store_true", help="Remove a config key")
 
     comp = sub.add_parser("completions", help="Generate shell completions")
     comp.add_argument("shell", choices=["bash", "zsh"], help="Shell type")

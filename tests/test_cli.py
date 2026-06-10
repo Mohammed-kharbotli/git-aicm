@@ -117,3 +117,65 @@ def test_saved_message_discard(capsys):
          patch("aicm.BACKENDS", {"ollama": lambda p, c: "feat: new msg"}):
         cmd_generate(args)
         mock_clear.assert_called_once()
+
+
+def test_ticket_priority_branch_over_config(capsys):
+    diff = "diff --git a/f.py\n+hello"
+    args = MagicMock()
+    args.dry_run = True
+    args.detailed = False
+    args.ticket = None
+
+    with patch("aicm.load_message", return_value=None), \
+         patch("aicm.get_diff", return_value=diff), \
+         patch("aicm.get_ticket", return_value="BRANCH-42"), \
+         patch("aicm.get_config", return_value={"backend": "ollama", "format": "conventional", "context": None, "ticket": "CONFIG-99", "ollama_url": "http://localhost:11434"}), \
+         patch("aicm.BACKENDS", {"ollama": lambda p, c: "feat: test"}):
+        cmd_generate(args)
+    out = capsys.readouterr().out
+    assert "BRANCH-42" in out
+    assert "CONFIG-99" not in out
+
+
+def test_ticket_priority_config_fallback(capsys):
+    diff = "diff --git a/f.py\n+hello"
+    args = MagicMock()
+    args.dry_run = True
+    args.detailed = False
+    args.ticket = None
+
+    with patch("aicm.load_message", return_value=None), \
+         patch("aicm.get_diff", return_value=diff), \
+         patch("aicm.get_ticket", return_value=None), \
+         patch("aicm.get_config", return_value={"backend": "ollama", "format": "conventional", "context": None, "ticket": "CONFIG-99", "ollama_url": "http://localhost:11434"}), \
+         patch("aicm.BACKENDS", {"ollama": lambda p, c: "feat: test"}):
+        cmd_generate(args)
+    out = capsys.readouterr().out
+    assert "CONFIG-99" in out
+
+
+def test_ticket_priority_flag_over_branch(capsys):
+    diff = "diff --git a/f.py\n+hello"
+    args = MagicMock()
+    args.dry_run = True
+    args.detailed = False
+    args.ticket = "FLAG-11"
+
+    with patch("aicm.load_message", return_value=None), \
+         patch("aicm.get_diff", return_value=diff), \
+         patch("aicm.get_ticket", return_value="BRANCH-42"), \
+         patch("aicm.get_config", return_value={"backend": "ollama", "format": "conventional", "context": None, "ticket": "CONFIG-99", "ollama_url": "http://localhost:11434"}), \
+         patch("aicm.BACKENDS", {"ollama": lambda p, c: "feat: test"}):
+        cmd_generate(args)
+    out = capsys.readouterr().out
+    assert "FLAG-11" in out
+    assert "BRANCH-42" not in out
+    assert "CONFIG-99" not in out
+
+
+def test_update_subcommand_errors_in_python():
+    with patch("sys.argv", ["git-aicm", "update"]):
+        try:
+            main()
+        except SystemExit:
+            pass

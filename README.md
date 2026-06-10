@@ -187,21 +187,31 @@ git aicm config backend
 git aicm config backend ollama
 git aicm config model codellama
 git aicm config format simple
+
+# remove a setting
+git aicm config --unset ticket
+git aicm config -g --unset ticket
 ```
 
 ### Project-level config
 
-Override settings per-repository with `--project` (or `-p`):
+Config commands default to project-level (`.aicm.toml` in the repository root). Use `--global` (or `-g`) to target the global config:
 
 ```bash
-# set a project-specific backend
-git aicm config -p backend bedrock
+# set a project-specific backend (default)
+git aicm config backend bedrock
 
 # view project config
-git aicm config -p
+git aicm config
+
+# set a global setting
+git aicm config -g backend ollama
+
+# view global config
+git aicm config -g
 ```
 
-This creates a `.aicm.toml` in the repository root. Priority: CLI args > project config > global config > defaults.
+Priority: CLI args > project config > global config > defaults.
 
 ### Manual config file
 
@@ -249,7 +259,8 @@ A `Refs: TICKET-123` line is automatically appended to the commit message.
 **Priority order:**
 1. `--ticket TICKET-123` — explicit flag
 2. Auto-detected from branch name (e.g. `feature/PROJ-42-login` → `Refs: PROJ-42`)
-3. No match — no `Refs:` line
+3. Config file (`ticket` key in `.aicm.toml`)
+4. No match — no `Refs:` line
 
 ```bash
 # explicit ticket
@@ -257,6 +268,9 @@ git aicm --ticket PROJ-42
 
 # auto-detect from branch name
 git aicm
+
+# set a default ticket in config
+git aicm config ticket PROJ-42
 ```
 
 The pattern matches any `UPPERCASE-NUMBER` format (e.g. `JIRA-123`, `PROJ-42`, `ABC-1`).
